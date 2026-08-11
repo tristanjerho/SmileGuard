@@ -1,73 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    LayoutDashboard,
-    Users,
+    UserCircle,
     Calendar,
     Activity,
-    Scan,
-    UserCircle,
     Bell,
     LogOut,
+    Shield,
 } from 'lucide-react';
+import { auth, db } from './src/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 import AiDiagnostic from './AiDiagnostic';
 import AppointmentsQueue from './AppointmentsQueue';
 import BookAppointment from './BookAppointment';
 import DentistDashboard from './src/DentistDashboard';
-import PatientProfile from './src/PatientProfile';
-import TreatmentHistory from './src/TreatmentHistory';
-import PatientRecords from './src/PatientRecords';
-import BracesMonitoring from './src/BracesMonitoring';
-import NotificationsStream from './src/NotificationsStream';
-import MyAppointments from './src/MyAppointments';
 import PatientProfileCard from './src/PatientProfileCard';
 import PatientTreatmentHistory from './src/PatientTreatmentHistory';
 import PatientNotifications from './src/PatientNotifications';
+import MyAppointments from './src/MyAppointments';
+import PatientLoginPage from './src/components/auth/PatientLoginPage';
+import AdminLoginPage from './src/components/admin/AdminLoginPage';
+import AdminPortal from './src/components/admin/AdminPortal';
+import PortalSelectionLanding from './src/components/auth/PortalSelectionLanding';
+import OnboardingFormPage from './src/components/auth/OnboardingFormPage';
+import { syncUserWithFirestore } from './src/services/userService';
+import Spinner from './src/components/auth/Spinner';
 
-export default function App() {
+function AppContent() {
+    const { currentUser, userProfile, loading, onboardingCompleted, isAdmin, logout, refreshProfile } = useAuth();
     const [userType, setUserType] = useState('landing');
-    const [activeTab, setActiveTab] = useState('Dashboard');
+    const [activeTab, setActiveTab] = useState('My Profile');
 
-    const navigationItems = userType === 'dentist'
-        ? [
-            { name: 'Dashboard', icon: LayoutDashboard },
-            { name: 'Patient Records', icon: Users },
-            { name: 'Appointments', icon: Calendar },
-            { name: 'Braces Monitoring', icon: Activity },
-            { name: 'AI Diagnostic', icon: Scan },
-        ]
-        : [
-            { name: 'My Profile', icon: UserCircle },
-            { name: 'Book Appointment', icon: Calendar },
-            { name: 'My Appointments', icon: Calendar },
-            { name: 'Treatment History', icon: Activity },
-            { name: 'Notifications', icon: Bell },
-        ];
+    const userTypeRef = useRef(userType);
+    useEffect(() => {
+        userTypeRef.current = userType;
+    }, [userType]);
 
-    const renderContent = () => {
-        if (userType === 'dentist') {
-            switch (activeTab) {
-                case 'Dashboard':
-                    return <DentistDashboard />;
-                case 'AI Diagnostic':
-                    return <AiDiagnostic />;
-                case 'Appointments':
-                    return <AppointmentsQueue />;
-                case 'Patient Records':
-                    return <PatientRecords />;
-                case 'Braces Monitoring':
-                    return <BracesMonitoring />;
-                default:
-                    return (
-                        <div className="bg-white p-8 border border-slate-200 rounded-xl text-center text-slate-400">
-                            <p className="font-medium">
-                                Panel coming soon: <span className="font-bold text-slate-700">{activeTab}</span>
-                            </p>
-                        </div>
-                    );
+    // Keep userType synced with auth state changes
+    useEffect(() => {
+        if (currentUser) {
+            if (isAdmin || userTypeRef.current === 'admin' || userTypeRef.current === 'admin_login') {
+                setUserType('admin');
+            } else {
+                setUserType('patient');
             }
         }
+    }, [currentUser, isAdmin]);
 
+    const navigationItems = [
+        { name: 'My Profile', icon: UserCircle },
+        { name: 'Book Appointment', icon: Calendar },
+        { name: 'My Appointments', icon: Calendar },
+        { name: 'Treatment History', icon: Activity },
+        { name: 'Notifications', icon: Bell },
+    ];
+
+    const renderContent = () => {
         switch (activeTab) {
             case 'My Profile':
                 return <PatientProfileCard />;
@@ -80,78 +69,82 @@ export default function App() {
             case 'Notifications':
                 return <PatientNotifications />;
             default:
-                return (
-                    <div className="bg-white p-8 border border-slate-200 rounded-xl text-center text-slate-400">
-                        <p className="font-medium">
-                            Panel coming soon: <span className="font-bold text-slate-700">{activeTab}</span>
-                        </p>
-                    </div>
-                );
+                return <PatientProfileCard />;
         }
     };
 
-    const handleLogin = (portalType) => {
-        setUserType(portalType);
-        setActiveTab(portalType === 'dentist' ? 'Dashboard' : 'My Profile');
-    };
-
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        await logout();
         setUserType('landing');
     };
 
-    if (userType === 'landing') {
+    if (loading) {
         return (
-            <div className="min-h-screen w-screen bg-slate-900 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
-                <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-teal-500/10 blur-3xl" />
-                <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
-
-                <div className="max-w-md w-full text-center space-y-8 z-10">
-                    <div className="space-y-3">
-                        <div className="h-16 w-16 rounded-2xl bg-emerald-400 flex items-center justify-center text-slate-950 text-2xl font-black mx-auto shadow-xl shadow-emerald-400/20">
-                            SG
-                        </div>
-                        <h1 className="text-3xl font-black tracking-tight text-white">
-                            SmileGuard <span className="text-emerald-400">AI</span>
-                        </h1>
-                        <p className="text-sm text-slate-400 font-medium">
-                            Next-generation dental workspace & diagnostic platform
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 pt-4">
-                        <button
-                            onClick={() => handleLogin('dentist')}
-                            className="group p-5 bg-slate-800/60 border border-slate-700 hover:border-emerald-400 rounded-xl text-left transition-all hover:bg-slate-800 hover:-translate-y-0.5 shadow-lg"
-                        >
-                            <h3 className="text-white font-bold text-base group-hover:text-emerald-400 transition-colors">
-                                Dentist Portal &rarr;
-                            </h3>
-                            <p className="text-xs text-slate-400 mt-1 font-medium">
-                                Access clinical patient charts, monitor braces milestones, and review CNN-powered dental X-ray scans.
-                            </p>
-                        </button>
-
-                        <button
-                            onClick={() => handleLogin('patient')}
-                            className="group p-5 bg-slate-800/60 border border-slate-700 hover:border-[#008B8B] rounded-xl text-left transition-all hover:bg-slate-800 hover:-translate-y-0.5 shadow-lg"
-                        >
-                            <h3 className="text-white font-bold text-base group-hover:text-teal-400 transition-colors">
-                                Patient Portal &rarr;
-                            </h3>
-                            <p className="text-xs text-slate-400 mt-1 font-medium">
-                                Book dynamic treatment slots, view orthodontic milestone statuses, and access your profile history logs.
-                            </p>
-                        </button>
-                    </div>
-
-                    <div className="text-[11px] text-slate-500 font-semibold tracking-wide uppercase pt-6">
-                        Secure HIPAA Compliant Dental Workspace Environment
-                    </div>
-                </div>
+            <div className="min-h-screen w-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-4">
+                <Spinner size="lg" className="text-teal-400" />
+                <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">
+                    Initializing SmileGuard AI Workspace...
+                </p>
             </div>
         );
     }
 
+    // Render Portal Selection Landing Page
+    if (!currentUser && userType === 'landing') {
+        return (
+            <PortalSelectionLanding
+                onSelectDentistPortal={() => setUserType('admin_login')}
+                onSelectPatientPortal={() => setUserType('patient_login')}
+            />
+        );
+    }
+
+    // Render Admin / Dentist Login Page
+    if (!currentUser && userType === 'admin_login') {
+        return (
+            <AdminLoginPage
+                onAdminAuthenticated={() => {
+                    setUserType('admin');
+                    setActiveTab('Dashboard');
+                }}
+                onSwitchToPatientPortal={() => setUserType('landing')}
+            />
+        );
+    }
+
+    // Render Patient Login Gateway
+    if (!currentUser && userType === 'patient_login') {
+        return (
+            <PatientLoginPage
+                onAuthenticated={() => {
+                    setUserType('patient');
+                    setActiveTab('My Profile');
+                }}
+                onCancel={() => setUserType('landing')}
+            />
+        );
+    }
+
+    // Render Admin Workspace (for Dentist/Admin accounts)
+    if (currentUser && (userType === 'admin' || isAdmin)) {
+        return <AdminPortal adminUser={currentUser} onLogout={handleLogout} />;
+    }
+
+    // MANDATORY ONBOARDING FLOW FOR PATIENTS:
+    // If logged in as patient but onboarding is incomplete, block workspace and render OnboardingFormPage
+    if (currentUser && !isAdmin && !onboardingCompleted) {
+        return (
+            <OnboardingFormPage
+                onCompleted={async () => {
+                    await refreshProfile();
+                    setUserType('patient');
+                    setActiveTab('My Profile');
+                }}
+            />
+        );
+    }
+
+    // Render Patient Workspace
     return (
         <div className="flex h-screen w-screen bg-[#F8FAFC] text-slate-800 overflow-hidden font-sans">
             <aside className="w-64 bg-[#0B132B] flex flex-col justify-between text-slate-300 shrink-0 shadow-xl">
@@ -165,7 +158,7 @@ export default function App() {
                         </span>
                     </div>
 
-                    <nav className="p-4 space-y-1">
+                    <nav className="p-4 space-y-1 text-left">
                         {navigationItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = activeTab === item.name;
@@ -187,17 +180,21 @@ export default function App() {
                     </nav>
                 </div>
 
-                <div className="flex flex-col border-t border-slate-800/60 bg-[#080d1e]">
+                <div className="flex flex-col border-t border-slate-800/60 bg-[#080d1e] text-left">
                     <div className="p-4 flex items-center gap-3 border-b border-slate-800/40">
                         <div className="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center text-white text-xs font-bold shrink-0 border border-slate-600">
-                            {userType === 'dentist' ? 'AS' : 'MS'}
+                            {userProfile?.fullName
+                                ? userProfile.fullName.substring(0, 2).toUpperCase()
+                                : (currentUser?.displayName
+                                    ? currentUser.displayName.substring(0, 2).toUpperCase()
+                                    : (currentUser?.email ? currentUser.email.substring(0, 2).toUpperCase() : 'MS'))}
                         </div>
                         <div className="overflow-hidden">
                             <p className="text-xs font-bold text-white truncate">
-                                {userType === 'dentist' ? 'Dr. Ana Santos' : 'Maria Santos'}
+                                {userProfile?.fullName || currentUser?.displayName || currentUser?.email || 'Maria Santos'}
                             </p>
                             <p className="text-[10px] text-slate-400 font-semibold truncate">
-                                {userType === 'dentist' ? 'Clinician Admin' : 'Patient ID #10024'}
+                                {currentUser?.email || 'Patient User'}
                             </p>
                         </div>
                     </div>
@@ -218,9 +215,24 @@ export default function App() {
                 <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between shadow-sm shrink-0">
                     <h2 className="text-sm font-black text-slate-900 tracking-wide uppercase">{activeTab}</h2>
 
-                    <div className="flex items-center gap-3 text-[11px] font-bold bg-slate-50 border border-slate-200/60 text-slate-500 px-3 py-1.5 rounded-lg">
-                        <div className={`h-1.5 w-1.5 rounded-full ${userType === 'dentist' ? 'bg-emerald-400' : 'bg-teal-400'}`} />
-                        <span className="capitalize">{userType} View Mode</span>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                if (isAdmin) {
+                                    setUserType('admin');
+                                } else {
+                                    setUserType('admin_login');
+                                }
+                            }}
+                            className="px-3.5 py-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 font-bold text-xs flex items-center gap-1.5 hover:bg-purple-100 transition-colors"
+                        >
+                            <Shield className="h-3.5 w-3.5" />
+                            <span>Switch to Admin Portal</span>
+                        </button>
+                        <div className="flex items-center gap-2 text-[11px] font-bold bg-slate-50 border border-slate-200/60 text-slate-500 px-3 py-1.5 rounded-lg">
+                            <div className="h-1.5 w-1.5 rounded-full bg-teal-400" />
+                            <span>Patient View Mode</span>
+                        </div>
                     </div>
                 </header>
 
@@ -229,5 +241,13 @@ export default function App() {
                 </main>
             </div>
         </div>
+    );
+}
+
+export default function App() {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
     );
 }

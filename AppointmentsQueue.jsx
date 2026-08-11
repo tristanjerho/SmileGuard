@@ -1,35 +1,76 @@
-import React, { useState } from 'react';
-import { Check, X, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, X, Clock, Calendar, User, Phone, Mail } from 'lucide-react';
+import { db } from './src/firebase';
+import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
+import Spinner from './src/components/auth/Spinner';
 
 export default function AppointmentsQueue() {
     const [filter, setFilter] = useState('All');
+    const [appointments, setAppointments] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const [appointments, setAppointments] = useState([
-        { id: 1, name: 'Juan dela Cruz', service: 'Routine Check-up', time: '09:00 AM', date: 'Today', status: 'Confirmed' },
-        { id: 2, name: 'Ana Reyes', service: 'Tooth Extraction', time: '11:30 AM', date: 'Today', status: 'Pending' },
-        { id: 3, name: 'Carlo Mendoza', service: 'AI Diagnostic Scan', time: '02:00 PM', date: 'Today', status: 'Confirmed' },
-        { id: 4, name: 'Maria Santos', service: 'Braces Adjustment', time: '10:00 AM', date: 'Tomorrow', status: 'Confirmed' },
-        { id: 5, name: 'Liza Ramos', service: 'Teeth Whitening', time: '04:15 PM', date: 'Jun 27, 2026', status: 'Pending' },
-    ]);
+    useEffect(() => {
+        if (!db) {
+            setLoading(false);
+            return;
+        }
 
-    const updateStatus = (id, newStatus) => {
-        setAppointments((prev) =>
-            prev.map((app) => (app.id === id ? { ...app, status: newStatus } : app))
-        );
+        const q = query(collection(db, 'appointments'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetched = [];
+            snapshot.forEach((docSnap) => {
+                fetched.push({ id: docSnap.id, ...docSnap.data() });
+            });
+
+            // Sort by date / creation time
+            fetched.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+            setAppointments(fetched);
+            setLoading(false);
+        }, (err) => {
+            console.error('Error fetching clinical appointments queue:', err);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const updateStatus = async (id, newStatus) => {
+        try {
+            if (db) {
+                const apptRef = doc(db, 'appointments', id);
+                await updateDoc(apptRef, { status: newStatus });
+            }
+        } catch (err) {
+            console.error('Error updating appointment status:', err);
+            alert('Failed to update status.');
+        }
     };
 
     const filteredAppointments = appointments.filter((app) => {
-        if (filter === 'Today') return app.date === 'Today';
+        if (filter === 'Today') {
+            const todayStr = new Date().toISOString().split('T')[0];
+            return app.date === todayStr || app.date === 'Today';
+        }
         if (filter === 'Pending') return app.status === 'Pending';
         return true;
     });
 
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-slate-200 text-slate-500 gap-3">
+                <Spinner size="md" className="text-purple-600" />
+                <span className="text-xs font-bold">Loading Clinical Appointment Queue...</span>
+            </div>
+        );
+    }
+
     return (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-left">
             <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">
-                        Review incoming requests and manage daily clinical slots.
+                    <h3 className="text-base font-bold text-slate-900">Clinical Appointment Queue</h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        Review incoming patient requests and confirm daily treatment slots in real-time.
                     </p>
                 </div>
 
@@ -38,10 +79,11 @@ export default function AppointmentsQueue() {
                         <button
                             key={tab}
                             onClick={() => setFilter(tab)}
-                            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${filter === tab
+                            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
+                                filter === tab
                                     ? 'bg-white text-slate-900 shadow-sm'
                                     : 'text-slate-600 hover:text-slate-900'
-                                }`}
+                            }`}
                         >
                             {tab}
                         </button>
@@ -56,16 +98,16 @@ export default function AppointmentsQueue() {
                             <th className="py-4 px-6">Patient Name</th>
                             <th className="py-4 px-4">Service Required</th>
                             <th className="py-4 px-4">Scheduled Slot</th>
-                            <th className="py-4 px-4">Date</th>
+                            <th className="py-4 px-4">Target Date</th>
                             <th className="py-4 px-4">Status</th>
                             <th className="py-4 px-6 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm">
+                    <tbody className="divide-y divide-slate-100 text-xs">
                         {filteredAppointments.length === 0 ? (
                             <tr>
                                 <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
-                                    No appointments match the selected filter.
+                                    No patient appointments match the selected filter.
                                 </td>
                             </tr>
                         ) : (
@@ -73,58 +115,62 @@ export default function AppointmentsQueue() {
                                 <tr key={app.id} className="hover:bg-slate-50/60 transition-colors group">
                                     <td className="py-4 px-6 font-bold text-slate-900">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-semibold">
-                                                {app.name.charAt(0)}
+                                            <div className="h-8 w-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-black">
+                                                {(app.patientName || app.name || 'P').charAt(0).toUpperCase()}
                                             </div>
-                                            {app.name}
+                                            <div>
+                                                <p className="font-bold text-slate-900">{app.patientName || app.name || 'Patient'}</p>
+                                                <p className="text-[10px] text-slate-400 font-medium">{app.patientEmail || app.patientPhone || ''}</p>
+                                            </div>
                                         </div>
                                     </td>
 
-                                    <td className="py-4 px-4 font-medium text-slate-600">{app.service}</td>
+                                    <td className="py-4 px-4 font-bold text-slate-800">{app.service}</td>
 
-                                    <td className="py-4 px-4 text-slate-500 font-medium">
-                                        <div className="flex items-center gap-1.5 text-xs">
+                                    <td className="py-4 px-4 text-slate-600 font-medium">
+                                        <div className="flex items-center gap-1.5 text-xs font-semibold">
                                             <Clock className="h-3.5 w-3.5 text-slate-400" />
                                             {app.time}
                                         </div>
                                     </td>
 
-                                    <td className="py-4 px-4 text-slate-600 font-medium text-xs">{app.date}</td>
+                                    <td className="py-4 px-4 text-slate-600 font-bold text-xs">{app.date}</td>
 
                                     <td className="py-4 px-4">
                                         <span
-                                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${app.status === 'Confirmed'
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                    : app.status === 'Rejected'
-                                                        ? 'bg-rose-50 text-rose-700 border-rose-100'
-                                                        : 'bg-amber-50 text-amber-700 border-amber-100 animate-pulse'
-                                                }`}
+                                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                                                app.status === 'Confirmed'
+                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                    : app.status === 'Rejected' || app.status === 'Cancelled'
+                                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                    : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                                            }`}
                                         >
-                                            {app.status}
+                                            {app.status || 'Pending'}
                                         </span>
                                     </td>
 
                                     <td className="py-4 px-6 text-right">
-                                        {app.status === 'Pending' ? (
-                                            <div className="flex items-center justify-end gap-2">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                            {app.status !== 'Confirmed' && (
                                                 <button
                                                     onClick={() => updateStatus(app.id, 'Confirmed')}
-                                                    className="h-8 w-8 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-500 hover:text-white transition-all rounded-lg flex items-center justify-center shadow-sm"
-                                                    title="Accept Appointment"
+                                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all"
                                                 >
-                                                    <Check className="h-4 w-4" />
+                                                    <Check className="h-3.5 w-3.5" />
+                                                    <span>Confirm</span>
                                                 </button>
+                                            )}
+                                            {app.status !== 'Rejected' && app.status !== 'Cancelled' && (
                                                 <button
                                                     onClick={() => updateStatus(app.id, 'Rejected')}
-                                                    className="h-8 w-8 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-500 hover:text-white transition-all rounded-lg flex items-center justify-center shadow-sm"
-                                                    title="Reject Appointment"
+                                                    className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1 transition-all"
                                                 >
-                                                    <X className="h-4 w-4" />
+                                                    <X className="h-3.5 w-3.5" />
+                                                    <span>Reject</span>
                                                 </button>
-                                            </div>
-                                        ) : (
-                                            <span className="text-xs text-slate-400 italic font-medium pr-2">Processed</span>
-                                        )}
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))

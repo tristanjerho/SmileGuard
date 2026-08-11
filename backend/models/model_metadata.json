@@ -1,0 +1,68 @@
+{
+  "modelVersion": "1.0.0",
+  "architecture": "EfficientNetB0 Transfer Learning",
+  "inputSize": [
+    224,
+    224,
+    3
+  ],
+  "classes": [
+    "Dental Caries",
+    "Impacted Teeth",
+    "Infection"
+  ],
+  "numClasses": 3,
+  "trainingStatus": "trained",
+  "trainingDate": "2026-08-09T22:21:23.008605",
+  "datasetName": "dataset_clean",
+  "datasetVersion": "1.0",
+  "numTrainingImages": 77,
+  "numValidationImages": 17,
+  "numTestImages": 17,
+  "metrics": {
+    "accuracy": 0.5294,
+    "precision": 0.5245,
+    "recall": 0.5294,
+    "f1Score": 0.5228,
+    "perClassMetrics": {
+      "Dental Caries": {
+        "precision": 0.6667,
+        "recall": 0.6,
+        "f1Score": 0.6316,
+        "testSupport": 10
+      },
+      "Impacted Teeth": {
+        "precision": 0.375,
+        "recall": 0.5,
+        "f1Score": 0.4286,
+        "testSupport": 6
+      },
+      "Infection": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1Score": 0.0,
+        "testSupport": 1
+      }
+    },
+    "confusionMatrix": [
+      [
+        6,
+        4,
+        0
+      ],
+      [
+        3,
+        3,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ]
+    ],
+    "datasetLimitation": "DATASET LIMITATION: The 'Infection' class has only 4 training images and 1 test image. Model predictions serve strictly as Clinical Decision Support (CDS) for dentist review. No clinical-grade diagnostic performance is claimed."
+  },
+  "limitation": "DATASET LIMITATION: The 'Infection' class has only 4 training images and 1 test image. Model predictions serve strictly as Clinical Decision Support (CDS) for dentist review. No clinical-grade diagnostic performance is claimed.",
+  "disclaimer": "AI-assisted analysis only. Final interpretation and clinical decisions remain with the dentist."
+}
