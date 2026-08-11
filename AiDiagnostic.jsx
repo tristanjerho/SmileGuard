@@ -18,6 +18,7 @@ import {
 import { db } from './src/firebase';
 import { collection, onSnapshot, query, addDoc, serverTimestamp } from 'firebase/firestore';
 import Spinner from './src/components/auth/Spinner';
+import { API_ENDPOINTS, DISPLAY_API_HOST } from './src/config/api';
 
 export default function AiDiagnostic() {
   const fileInputRef = useRef(null);
@@ -209,7 +210,7 @@ export default function AiDiagnostic() {
 
     try {
       // Connect to FastAPI AI Backend
-      const response = await fetch('http://localhost:8000/api/predict', {
+      const response = await fetch(API_ENDPOINTS.predict, {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -230,7 +231,7 @@ export default function AiDiagnostic() {
       if (err.name === 'AbortError') {
         msg = 'API request timed out after 15 seconds. Please ensure the backend is responsive.';
       } else if (msg === 'Failed to fetch') {
-        msg = 'FastAPI AI Backend Unavailable. Please verify the server is running on http://localhost:8000.';
+        msg = `FastAPI AI Backend Unavailable. Please verify the server is running on ${DISPLAY_API_HOST}.`;
       }
       console.warn('FastAPI connection / prediction error:', msg);
       setApiError(msg);

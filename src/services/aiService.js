@@ -1,11 +1,12 @@
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { API_ENDPOINTS } from '../config/api';
 
 export const analyzeDentalXray = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch('http://localhost:8000/api/predict', {
+  const response = await fetch(API_ENDPOINTS.predict, {
     method: 'POST',
     body: formData,
   });
