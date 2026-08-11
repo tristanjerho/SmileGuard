@@ -21,9 +21,16 @@ SUPPORTED_IMAGE_MODALITY = "Dental X-ray"
 MODEL_VERSION = "1.0.0"
 MODEL_ARCHITECTURE = "EfficientNetB0 Transfer Learning"
 
-# Configurable CORS origins via environment variable
-raw_cors = os.getenv("ALLOWED_ORIGINS", "*")
-CORS_ORIGINS = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
+# Configurable CORS origins (defaults to local dev ports & wildcards if not set)
+raw_cors = os.getenv("ALLOWED_ORIGINS", "")
+if not raw_cors.strip() or raw_cors.strip() == "*":
+    CORS_ORIGINS = ["*"]
+else:
+    CORS_ORIGINS = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
+    if "http://localhost:5173" not in CORS_ORIGINS:
+        CORS_ORIGINS.append("http://localhost:5173")
+    if "http://localhost:8000" not in CORS_ORIGINS:
+        CORS_ORIGINS.append("http://localhost:8000")
 
 CLINICAL_DISCLAIMER = (
     "AI-assisted analysis only. Final interpretation and clinical decisions remain with the dentist."
