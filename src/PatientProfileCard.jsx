@@ -152,10 +152,10 @@ export default function PatientProfileCard() {
         </div>
 
         {/* Quick KPI Stat Highlights Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-0.5">
             <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
-              <Activity className="h-3 w-3 text-emerald-600" />
+              <Activity className="h-3 w-3 text-emerald-600 shrink-0" />
               <span>Clinical Risk</span>
             </p>
             <p className="text-xs font-black text-emerald-900">Low Risk (Routine)</p>
@@ -163,7 +163,7 @@ export default function PatientProfileCard() {
 
           <div className="p-3.5 rounded-2xl bg-teal-50/80 border border-teal-200 space-y-0.5">
             <p className="text-[10px] font-bold uppercase tracking-wider text-teal-700 flex items-center gap-1">
-              <Clock className="h-3 w-3 text-teal-600" />
+              <Clock className="h-3 w-3 text-teal-600 shrink-0" />
               <span>Hygiene Recall</span>
             </p>
             <p className="text-xs font-black text-teal-900">Due in 2 Months</p>
@@ -171,7 +171,7 @@ export default function PatientProfileCard() {
 
           <div className="p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-0.5">
             <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-purple-600" />
+              <Sparkles className="h-3 w-3 text-purple-600 shrink-0" />
               <span>X-Ray Scans</span>
             </p>
             <p className="text-xs font-black text-purple-900">3 Panoramic Records</p>
@@ -179,7 +179,7 @@ export default function PatientProfileCard() {
 
           <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 space-y-0.5">
             <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1">
-              <CreditCard className="h-3 w-3 text-blue-600" />
+              <CreditCard className="h-3 w-3 text-blue-600 shrink-0" />
               <span>HMO Status</span>
             </p>
             <p className="text-xs font-black text-blue-900">Maxicare Active</p>
@@ -328,7 +328,7 @@ export default function PatientProfileCard() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-slate-700 pt-1 border-t border-blue-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 pt-1 border-t border-blue-100">
               <div>
                 <p className="text-[10px] font-bold text-slate-400">Member ID</p>
                 <p className="font-mono font-bold text-slate-800">{hmoMemberId}</p>
