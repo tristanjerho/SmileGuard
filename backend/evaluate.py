@@ -132,7 +132,9 @@ def evaluate_model(test_dataset_dir: str):
 
 if __name__ == '__main__':
     import argparse
+    from config import BASE_DIR
+    default_test_dir = os.path.join(BASE_DIR, "dataset_clean", "test")
     parser = argparse.ArgumentParser(description="Evaluate SmileGuard AI EfficientNetB0 model performance.")
-    parser.add_argument("--test_dir", type=str, required=True, help="Path to real test dataset directory.")
+    parser.add_argument("--test_dir", type=str, default=default_test_dir, help="Path to real test dataset directory.")
     args = parser.parse_args()
     evaluate_model(args.test_dir)

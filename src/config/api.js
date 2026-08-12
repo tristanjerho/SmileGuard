@@ -1,24 +1,9 @@
 // Centralized API Configuration for SmileGuard AI Backend
-// Environment Variable: VITE_API_URL
-// Local Dev Default: http://localhost:8000
-// Production Default: https://YOUR-RENDER-BACKEND.onrender.com
+// Uses VITE_API_URL if defined, otherwise defaults to http://localhost:8000 for local dev or relative /api for production
 
-const rawApiUrl = import.meta.env.VITE_API_URL;
-
-const getApiBaseUrl = () => {
-  if (rawApiUrl !== undefined && rawApiUrl !== null && rawApiUrl !== "") {
-    let clean = rawApiUrl.trim().replace(/\/+$/, "");
-    if (clean.endsWith("/api")) {
-      clean = clean.slice(0, -4);
-    }
-    return clean;
-  }
-  return import.meta.env.DEV ? "http://localhost:8000" : "";
-};
-
-export const API_BASE_URL = getApiBaseUrl();
-
-export const DISPLAY_API_HOST = API_BASE_URL || (import.meta.env.DEV ? "http://localhost:8000" : "configured API endpoint");
+export const API_BASE_URL = (import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== null)
+  ? import.meta.env.VITE_API_URL
+  : "http://localhost:8000";
 
 export const API_ENDPOINTS = {
   predict: `${API_BASE_URL}/api/predict`,

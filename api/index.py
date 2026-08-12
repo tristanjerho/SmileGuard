@@ -1,12 +1,12 @@
 import sys
-from pathlib import Path
+import os
 
-# Add backend directory to sys.path using pathlib
-current_dir = Path(__file__).resolve().parent
-backend_dir = current_dir.parent / "backend"
+# Add backend directory to sys.path for Vercel Serverless Function module resolution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.join(os.path.dirname(current_dir), "backend")
 
-if str(backend_dir) not in sys.path:
-    sys.path.insert(0, str(backend_dir))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
 
 from app.main import app
 

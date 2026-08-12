@@ -42,7 +42,13 @@ def run_predict_cli(image_path: str):
         sys.exit(1)
 
 if __name__ == '__main__':
+    import argparse
+    from config import BASE_DIR
+    default_img = os.path.join(BASE_DIR, "dataset_clean", "test", "Dental Caries", "11.jpg")
+    if not os.path.exists(default_img):
+        default_img = os.path.join(BASE_DIR, "dataset", "Dental Caries", "1.jpg")
+
     parser = argparse.ArgumentParser(description="CLI inference & Grad-CAM visual explainability for SmileGuard AI.")
-    parser.add_argument("--image", type=str, required=True, help="Path to input dental X-ray image.")
+    parser.add_argument("--image", type=str, default=default_img, help="Path to input dental X-ray image.")
     args = parser.parse_args()
     run_predict_cli(args.image)

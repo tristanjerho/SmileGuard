@@ -20,16 +20,8 @@ class ReviewRequest(BaseModel):
 
 @router.get("/health")
 def get_health():
-    is_loaded = model_service_instance.is_trained() and model_service_instance.model is not None
-    classes = model_service_instance.class_names if is_loaded and model_service_instance.class_names else [
-        "Dental Caries",
-        "Impacted Teeth",
-        "Infection"
-    ]
     return {
-        "status": "ok",
-        "model_loaded": is_loaded,
-        "classes": classes,
+        "status": "healthy",
         "service": "SmileGuard AI Clinical Backend",
         "timestamp": datetime.now().isoformat()
     }

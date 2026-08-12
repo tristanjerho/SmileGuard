@@ -1,5 +1,5 @@
+import os
 import json
-from pathlib import Path
 import numpy as np
 import tensorflow as tf
 from datetime import datetime
@@ -24,26 +24,17 @@ class ModelService:
 
     def is_trained(self) -> bool:
         """
-        Validates whether a trained model, class mapping, and metadata genuinely exist using pathlib.
+        Validates whether a trained model, class mapping, and metadata genuinely exist.
         """
-        if not isinstance(MODEL_PATH, Path):
-            model_p = Path(MODEL_PATH)
-            class_p = Path(CLASS_NAMES_PATH)
-            meta_p = Path(METADATA_PATH)
-        else:
-            model_p = MODEL_PATH
-            class_p = CLASS_NAMES_PATH
-            meta_p = METADATA_PATH
-
-        if not model_p.exists():
+        if not os.path.exists(MODEL_PATH):
             return False
-        if not class_p.exists():
+        if not os.path.exists(CLASS_NAMES_PATH):
             return False
-        if not meta_p.exists():
+        if not os.path.exists(METADATA_PATH):
             return False
 
         try:
-            with open(meta_p, 'r', encoding='utf-8') as f:
+            with open(METADATA_PATH, 'r') as f:
                 meta = json.load(f)
                 if meta.get("trainingStatus") != "trained":
                     return False
@@ -54,20 +45,20 @@ class ModelService:
 
     def load_model(self):
         """
-        Loads the trained Keras model, class mapping, and metadata once per server instance.
+        Loads the trained Keras model, class mapping, and metadata if training has occurred.
         """
         if self.is_trained():
             try:
                 print(f"Loading trained EfficientNetB0 model from {MODEL_PATH}...")
-                self.model = tf.keras.models.load_model(str(MODEL_PATH))
+                self.model = tf.keras.models.load_model(MODEL_PATH)
 
-                with open(CLASS_NAMES_PATH, 'r', encoding='utf-8') as f:
+                with open(CLASS_NAMES_PATH, 'r') as f:
                     self.class_names = json.load(f)
 
-                with open(METADATA_PATH, 'r', encoding='utf-8') as f:
+                with open(METADATA_PATH, 'r') as f:
                     self.metadata = json.load(f)
 
-                print(f"Model successfully loaded once. Discovered classes ({len(self.class_names)}): {self.class_names}")
+                print(f"Model successfully loaded. Discovered classes ({len(self.class_names)}): {self.class_names}")
             except Exception as e:
                 print(f"Error loading trained model: {e}")
                 self.model = None
@@ -115,7 +106,8 @@ class ModelService:
     def predict_xray(self, image_bytes: bytes):
         """
         Executes CNN inference & Grad-CAM visual explainability.
-        Refuses prediction if model is not trained. No synthetic or mock predictions used.
+        Refuses prediction if model is not trained.
+        No synthetic fallbacks or fake confidences are used.
         """
         if not self.is_trained() or self.model is None:
             raise ValueError(
@@ -125,12 +117,18 @@ class ModelService:
 
         input_tensor, orig_bgr = preprocess_image(image_bytes)
 
-        # Run inference using the pre-loaded singleton model instance
         preds = self.model.predict(input_tensor, verbose=0)
 
-        # Multiclass classification with Softmax output
-        top_idx = int(np.argmax(preds[0]))
-        confidence = float(preds[0][top_idx]) * 100.0
+        # Check binary vs multiclass prediction head output
+        if preds.shape[-1] == 1:
+            # Binary classification with Sigmoid output
+            prob = float(preds[0][0])
+            top_idx = 1 if prob >= 0.5 else 0
+            confidence = prob * 100.0 if top_idx == 1 else (1.0 - prob) * 100.0
+        else:
+            # Multiclass classification with Softmax output
+            top_idx = int(np.argmax(preds[0]))
+            confidence = float(preds[0][top_idx]) * 100.0
 
         if top_idx < len(self.class_names):
             predicted_class = self.class_names[top_idx]
@@ -162,5 +160,4 @@ class ModelService:
             "disclaimer": CLINICAL_DISCLAIMER
         }
 
-# Singleton instance initialized once at backend server startup
 model_service_instance = ModelService()
