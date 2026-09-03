@@ -2,7 +2,9 @@ import os
 import sys
 import json
 import collections
+# pyrefly: ignore [missing-import]
 import numpy as np
+# pyrefly: ignore [missing-import]
 from PIL import Image
 from typing import Dict, List, Tuple
 
