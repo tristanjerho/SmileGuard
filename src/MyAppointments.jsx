@@ -205,7 +205,7 @@ export default function MyAppointments() {
       {/* Reschedule Modal */}
       {editingAppt && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md max-h-[90vh] overflow-y-auto w-full shadow-2xl space-y-4 text-left">
             <h3 className="text-base font-bold text-slate-900">Reschedule Appointment</h3>
             <p className="text-xs text-slate-500">
               Select a new date and time for <span className="font-semibold text-slate-700">{editingAppt.service}</span>.

@@ -80,7 +80,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
       aria-modal="true"
       aria-labelledby="forgot-password-title"
     >
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 animate-slide-up">
+      <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 animate-slide-up">
         <button
           onClick={onClose}
           aria-label="Close modal"

@@ -86,7 +86,7 @@ export default function PatientNotifications() {
 
         {unreadCount > 0 && (
           <button
-            onClick={handleMarkAllRead}
+            onClick={handleMarkAllAsRead}
             className="flex items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors"
           >
             <CheckCheck className="h-4 w-4" />

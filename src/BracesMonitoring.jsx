@@ -287,7 +287,7 @@ export default function BracesMonitoring() {
       {/* Edit Orthodontic Stage Modal */}
       {selectedPatient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl border border-[#E9E5F5] p-6 max-w-md w-full shadow-2xl space-y-4 text-left">
+          <div className="bg-white rounded-2xl border border-[#E9E5F5] p-6 max-w-md max-h-[90vh] overflow-y-auto w-full shadow-2xl space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
                 <Edit3 className="h-4 w-4 text-[#8B5CF6]" />

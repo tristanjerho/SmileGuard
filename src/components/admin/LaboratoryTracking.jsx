@@ -188,7 +188,7 @@ export default function LaboratoryTracking() {
       {/* Add Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-[#263238]/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#FFFFFF] rounded-[20px] p-6 shadow-2xl max-w-md w-full space-y-4 border border-[#E9E5F5]">
+          <div className="bg-[#FFFFFF] rounded-[20px] p-6 shadow-2xl max-w-md max-h-[90vh] overflow-y-auto w-full space-y-4 border border-[#E9E5F5]">
             <h3 className="text-base font-bold text-[#263238] flex items-center gap-2">
               <FlaskConical className="h-5 w-5 text-[#8B5CF6]" />
               <span>Create Laboratory Work Order</span>

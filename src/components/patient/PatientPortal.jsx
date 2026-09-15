@@ -93,7 +93,7 @@ export default function PatientPortal({ patientUser, userProfile, onLogout, onSw
 
   return (
     <PurpleWaveBackground>
-      <div className="flex h-screen w-screen overflow-hidden font-sans relative">
+      <div className="flex h-screen h-[100dvh] w-screen overflow-hidden font-sans relative">
         {/* Mobile Menu Drawer Overlay */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-50 flex md:hidden">
@@ -101,7 +101,7 @@ export default function PatientPortal({ patientUser, userProfile, onLogout, onSw
               className="fixed inset-0 bg-[#263238]/60 backdrop-blur-xs transition-opacity"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <aside className="relative w-72 max-w-[85vw] bg-white dark:bg-slate-900/95 backdrop-blur-xl flex flex-col justify-between text-[#263238] dark:text-white shadow-2xl z-50 border-r border-[#E9E5F5] dark:border-slate-800">
+            <aside className="relative w-72 max-w-[85vw] h-full overflow-y-auto bg-white dark:bg-slate-900/95 backdrop-blur-xl flex flex-col justify-between text-[#263238] dark:text-white shadow-2xl z-50 border-r border-[#E9E5F5] dark:border-slate-800">
               <div>
                 <div className="p-5 border-b border-[#E9E5F5] dark:border-slate-800 flex items-center justify-between bg-[#F7F5FF] dark:bg-slate-950/60">
                   <Logo size="sm" subtitle="Patient Portal" />
@@ -248,7 +248,7 @@ export default function PatientPortal({ patientUser, userProfile, onLogout, onSw
           </header>
 
           {/* Dynamic Tab Body */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-transparent pb-20 md:pb-8">
+          <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-transparent pb-24 md:pb-8 touch-pan-y">
             {renderContent()}
           </main>
 

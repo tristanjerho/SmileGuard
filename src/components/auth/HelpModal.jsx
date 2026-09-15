@@ -69,7 +69,7 @@ export default function HelpModal({ type, isOpen, onClose }) {
       role="dialog"
       aria-modal="true"
     >
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 animate-slide-up text-left">
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 animate-slide-up text-left">
         <button
           onClick={onClose}
           aria-label="Close dialog"
