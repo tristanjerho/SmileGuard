@@ -10,7 +10,7 @@ export default defineConfig({
     plugins: [
         react(),
         VitePWA({
-            registerType: 'prompt',
+            registerType: 'autoUpdate',
             includeAssets: ['favicon.ico', 'favicon.png', 'favicon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'assets/SmileGuard_AI_Logo.svg', 'SmileGuard_AI_Logo.svg'],
             manifest: {
                 name: 'SmileGuard AI',

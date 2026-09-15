@@ -55,11 +55,7 @@ export default function PWAStatus() {
       e.preventDefault();
       setDeferredPrompt(e);
 
-      // Check if user dismissed prompt previously
-      const isDismissed = localStorage.getItem('smileguard_pwa_install_dismissed');
-      if (!isDismissed) {
-        setShowInstallBanner(true);
-      }
+      setShowInstallBanner(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -72,8 +68,7 @@ export default function PWAStatus() {
 
     // Detect iOS safari non-standalone
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isIosDismissed = localStorage.getItem('smileguard_ios_install_dismissed');
-    if (isIos && !isStandalone && !isIosDismissed) {
+    if (isIos && !isStandalone) {
       setShowIosTip(true);
     }
 
