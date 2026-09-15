@@ -11,10 +11,10 @@ export default defineConfig({
         react(),
         VitePWA({
             registerType: 'prompt',
-            includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'assets/SmileGuard_AI_Logo.svg', 'SmileGuard_AI_Logo.svg'],
+            includeAssets: ['favicon.ico', 'favicon.png', 'favicon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'assets/SmileGuard_AI_Logo.svg', 'SmileGuard_AI_Logo.svg'],
             manifest: {
                 name: 'SmileGuard AI',
-                short_name: 'SmileGuard',
+                short_name: 'SmileGuard AI',
                 description: 'AI-Assisted Smart Dental Clinic Management and Clinical Decision Support System',
                 start_url: '/',
                 scope: '/',
@@ -26,18 +26,25 @@ export default defineConfig({
                     {
                         src: '/pwa-192x192.png',
                         sizes: '192x192',
-                        type: 'image/png'
-                    },
-                    {
-                        src: '/pwa-512x512.png',
-                        sizes: '512x512',
-                        type: 'image/png'
+                        type: 'image/png',
+                        purpose: 'any'
                     },
                     {
                         src: '/pwa-512x512.png',
                         sizes: '512x512',
                         type: 'image/png',
-                        purpose: 'any maskable'
+                        purpose: 'any'
+                    },
+                    {
+                        src: '/pwa-512x512.png',
+                        sizes: '512x512',
+                        type: 'image/png',
+                        purpose: 'maskable'
+                    },
+                    {
+                        src: '/apple-touch-icon.png',
+                        sizes: '180x180',
+                        type: 'image/png'
                     }
                 ]
             },
