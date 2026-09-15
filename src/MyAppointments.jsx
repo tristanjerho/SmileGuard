@@ -96,14 +96,14 @@ export default function MyAppointments() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-5">
+    <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-[#E9E5F5] bg-white shadow-xl shadow-purple-900/5">
+      <div className="border-b border-[#E9E5F5] bg-[#F7F5FF] px-6 py-5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-bold text-slate-900">My Appointments</h3>
             <p className="mt-0.5 text-xs text-slate-500">Your personal clinical care schedule synced live with Firestore</p>
           </div>
-          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-600">
+          <div className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-purple-700">
             {appointments.length} {appointments.length === 1 ? 'entry' : 'entries'}
           </div>
         </div>

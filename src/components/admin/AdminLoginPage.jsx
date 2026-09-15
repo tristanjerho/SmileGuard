@@ -16,8 +16,8 @@ import Spinner from '../auth/Spinner';
  * Password: smileguard
  */
 export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatientPortal }) {
-  const [emailInput, setEmailInput] = useState('admin@smileguard.ai');
-  const [password, setPassword] = useState('smileguard');
+  const [emailInput, setEmailInput] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -104,7 +104,7 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
     } catch (err) {
       console.error('Admin Auth Error:', err);
       if (err.code === 'auth/wrong-password') {
-        setErrorMsg('Incorrect administrator password. Please try "smileguard".');
+        setErrorMsg('Incorrect administrator password. Please check your credentials.');
       } else {
         setErrorMsg(err.message || 'Admin authentication failed.');
       }
@@ -114,23 +114,23 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
   };
 
   return (
-    <div className="min-h-screen w-screen bg-gradient-to-br from-slate-950 via-slate-900 to-purple-950 text-white flex flex-col justify-between p-6 sm:p-12 relative overflow-hidden font-sans">
+    <div className="min-h-screen w-screen bg-[#F7F5FF] text-slate-800 flex flex-col justify-between p-6 sm:p-12 relative overflow-hidden font-sans">
       {/* Background Lighting Glows */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-200/40 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-100/50 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Header */}
       <div className="z-10 flex items-center justify-between max-w-5xl w-full mx-auto">
         <button
           onClick={onSwitchToPatientPortal}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs font-bold text-slate-300 hover:text-white hover:border-slate-600 transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-[#E9E5F5] text-xs font-semibold text-slate-600 hover:text-purple-700 hover:border-purple-300 shadow-sm transition-all"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Portal Selection</span>
         </button>
 
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-950/60 border border-purple-800 text-[11px] font-bold text-purple-300">
-          <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-50 border border-purple-200 text-[11px] font-bold text-purple-700">
+          <ShieldCheck className="h-3.5 w-3.5 text-purple-600" />
           <span>Clinician & Administrator Gateway</span>
         </div>
       </div>
@@ -138,78 +138,83 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
       {/* Main Centered Login Box */}
       <div className="my-auto z-10 w-full max-w-md mx-auto space-y-6 animate-fade-in text-left">
         <div className="text-center space-y-3">
-          <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-teal-400 flex items-center justify-center text-white font-black text-xl mx-auto shadow-xl shadow-purple-500/20 ring-2 ring-white/10">
-            SG
+          <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white font-black text-xl mx-auto shadow-lg shadow-purple-200 ring-4 ring-white">
+            <svg className="w-8 h-8 fill-current text-white" viewBox="0 0 24 24">
+              <path d="M12 2C8.5 2 6 4.5 6 7.5C6 9.5 7 11 7.5 13C8 15 8.5 18 9.5 21C9.8 21.9 10.7 22 11.2 21.3C11.7 20.6 12 18.5 12 18.5C12 18.5 12.3 20.6 12.8 21.3C13.3 22 14.2 21.9 14.5 21C15.5 18 16 15 16.5 13C17 11 18 9.5 18 7.5C18 4.5 15.5 2 12 2Z" />
+            </svg>
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white">
-            SmileGuard <span className="text-purple-400">Admin</span>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">
+            SmileGuard <span className="text-purple-600">Admin</span>
           </h1>
-          <p className="text-xs text-slate-400 font-medium">
+          <p className="text-xs text-slate-500 font-medium">
             Clinical Decision Support & Clinic Management Portal
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-5">
-          {/* Quick Pre-filled Credentials Banner */}
-          <div className="p-3.5 rounded-xl bg-purple-950/50 border border-purple-800/60 text-purple-200 text-xs space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-purple-300">
-              <UserCheck className="h-4 w-4 text-purple-400" />
-              <span>Admin Account Credentials</span>
-            </div>
-            <p className="text-[11px] text-slate-300">
-              <strong>Email / Username:</strong> <code className="bg-slate-950 px-1.5 py-0.5 rounded text-purple-300">admin</code> or <code className="bg-slate-950 px-1.5 py-0.5 rounded text-purple-300">admin@smileguard.ai</code>
-            </p>
-            <p className="text-[11px] text-slate-300">
-              <strong>Password:</strong> <code className="bg-slate-950 px-1.5 py-0.5 rounded text-purple-300">smileguard</code>
-            </p>
+        <div className="bg-white border border-[#E9E5F5] rounded-2xl p-6 sm:p-8 shadow-xl shadow-purple-900/5 backdrop-blur-xl space-y-5">
+          {/* Role Segmented Switcher */}
+          <div className="flex items-center justify-center p-1 rounded-xl bg-purple-50 border border-purple-200 max-w-xs mx-auto shadow-xs">
+            <button
+              type="button"
+              onClick={onSwitchToPatientPortal}
+              className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold text-slate-500 hover:text-purple-700 transition-colors"
+            >
+              👤 Patient Portal
+            </button>
+            <button
+              type="button"
+              className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold bg-white text-purple-700 shadow-xs border border-purple-200"
+            >
+              🩺 Dentist / Admin
+            </button>
           </div>
 
           {successMsg && (
-            <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-700 text-emerald-200 text-xs font-semibold flex items-center gap-2.5 animate-bounce">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-bounce">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
 
           {errorMsg && (
-            <div className="p-4 rounded-xl bg-red-950/80 border border-red-800 text-red-300 text-xs font-medium flex items-center gap-2.5 animate-slide-up">
-              <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2.5 animate-slide-up">
+              <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           <form onSubmit={handleAdminSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 Admin Username / Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
+                <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   required
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
                   placeholder="admin or admin@smileguard.ai"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
+                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="smileguard"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-colors"
                 />
               </div>
             </div>
@@ -217,7 +222,7 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-60"
+              className="w-full py-3.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-200 transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-60"
             >
               {isLoading ? (
                 <>
@@ -233,8 +238,8 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
             </button>
           </form>
 
-          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] text-slate-400 text-center space-y-1">
-            <p className="font-semibold text-slate-300">Restricted Access Environment</p>
+          <div className="p-3 rounded-xl bg-slate-50 border border-[#E9E5F5] text-[11px] text-slate-500 text-center space-y-1">
+            <p className="font-semibold text-slate-700">Restricted Access Environment</p>
             <p>Authorized dentists & clinic managers only. All attempts audited.</p>
           </div>
         </div>

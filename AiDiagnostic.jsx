@@ -13,12 +13,16 @@ import {
   Sparkles,
   Check,
   X,
-  FileWarning
+  FileWarning,
+  Cloud,
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
 import { db } from './src/firebase';
 import { collection, onSnapshot, query, addDoc, serverTimestamp } from 'firebase/firestore';
 import Spinner from './src/components/auth/Spinner';
 import { API_ENDPOINTS, API_BASE_URL } from './src/config/api';
+import { uploadToCloudinary } from './src/services/cloudinaryService';
 
 export default function AiDiagnostic() {
   const fileInputRef = useRef(null);
@@ -28,18 +32,30 @@ export default function AiDiagnostic() {
 
   const [uploadedFile, setUploadedFile] = useState(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
-  const [validationError, setValidationError] = useState('');
+  const [validationError, setValidationError] = useState(null);
+  const [detectedModality, setDetectedModality] = useState('');
+  const [rejectedPreviewUrl, setRejectedPreviewUrl] = useState(null);
+  const [rejectedFileName, setRejectedFileName] = useState('');
+
+  // Cloudinary CDN Upload State
+  const [cloudinaryUrl, setCloudinaryUrl] = useState('');
+  const [isCloudinaryUploading, setIsCloudinaryUploading] = useState(false);
+  const [cloudinaryError, setCloudinaryError] = useState('');
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [apiError, setApiError] = useState('');
 
-  // Dentist Review Form State
+  // Dentist Review Form & Viewer State
   const [hasReviewedAiOutput, setHasReviewedAiOutput] = useState(false);
   const [clinicalInterpretation, setClinicalInterpretation] = useState('');
   const [finalClinicalDecision, setFinalClinicalDecision] = useState('');
   const [isSavingReview, setIsSavingReview] = useState(false);
   const [reviewSavedSuccess, setReviewSavedSuccess] = useState(false);
+
+  // X-Ray Image Viewer Controls
+  const [viewerTab, setViewerTab] = useState('overlay'); // 'original' | 'gradcam' | 'overlay'
+  const [zoomScale, setZoomScale] = useState(1);
 
   // Fetch patients list from Firestore for patient selector
   useEffect(() => {
@@ -73,56 +89,70 @@ export default function AiDiagnostic() {
 
   /**
    * Client-side Dental X-ray Modality & File Integrity Validator
+   * Strictly verifies radiological characteristics:
+   * Rejects: Intraoral photos, Selfies / Color photos, General photos, Documents, Blank images
+   * Supports: Panoramic X-ray, Bitewing X-ray, Periapical X-ray
    */
   const validateXrayImage = (file) => {
     return new Promise((resolve) => {
-      // 1. File extension validation
       const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'jfif', 'pjpeg', 'pjp', 'tif', 'tiff'];
       const ext = file.name.split('.').pop().toLowerCase();
       if (!allowedExts.includes(ext)) {
         return resolve({
           valid: false,
-          message: `Unsupported file format '.${ext}'. Allowed formats: JPG, JPEG, PNG, WEBP, BMP, JFIF.`
+          isModalityError: false,
+          category: 'Unsupported File Format',
+          message: `File format '.${ext}' is not supported. Please upload JPG, JPEG, PNG, WEBP, or BMP images.`
         });
       }
 
-      // 2. File size validation
       if (file.size > 25 * 1024 * 1024) {
         return resolve({
           valid: false,
-          message: 'File size exceeds maximum limit of 25MB.'
+          isModalityError: false,
+          category: 'File Size Exceeded',
+          message: 'File size exceeds the maximum allowed limit of 25MB.'
         });
       }
       if (file.size < 1 * 1024) {
         return resolve({
           valid: false,
+          isModalityError: false,
+          category: 'File Too Small',
           message: 'File size is too small (under 1KB).'
         });
       }
 
-      // 3. Image Dimensions & Color Modality Check (detect intraoral photos, selfies, non-X-rays)
       const img = new Image();
       const objectUrl = URL.createObjectURL(file);
       img.onload = () => {
         URL.revokeObjectURL(objectUrl);
 
-        if (img.width < 50 || img.height < 50) {
+        if (img.width < 80 || img.height < 80) {
           return resolve({
             valid: false,
-            message: `Image resolution too low (${img.width}x${img.height}px). Minimum required is 50x50px.`
+            isModalityError: false,
+            category: 'Resolution Too Low',
+            message: `Image resolution (${img.width}x${img.height}px) is too low. Dental radiographs require at least 80x80px.`
           });
         }
 
-        // Render to canvas to analyze pixel color saturation & RGB channel divergence
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = Math.min(img.width, 200);
-        canvas.height = Math.min(img.height, 200);
+        const sampleDim = 200;
+        canvas.width = Math.min(img.width, sampleDim);
+        canvas.height = Math.min(img.height, sampleDim);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         let totalDiff = 0;
         let totalSat = 0;
+        let coloredPixels = 0;
+        let oralTonePixels = 0;
+        let skinTonePixels = 0;
+        let extremePixels = 0;
+        let sumLum = 0;
+        let sumLumSq = 0;
         const pixelCount = imgData.length / 4;
 
         for (let i = 0; i < imgData.length; i += 4) {
@@ -130,36 +160,101 @@ export default function AiDiagnostic() {
           const g = imgData[i + 1];
           const b = imgData[i + 2];
 
-          // Channel divergence
           const diff = (Math.abs(r - g) + Math.abs(g - b) + Math.abs(b - r)) / 3;
           totalDiff += diff;
 
-          // Saturation
           const max = Math.max(r, g, b);
           const min = Math.min(r, g, b);
           const sat = max === 0 ? 0 : (max - min) / max;
           totalSat += sat;
+
+          if (sat > 0.15 && diff > 8) {
+            coloredPixels++;
+          }
+
+          if (r > 60 && r > (g + 18) && r > (b + 14)) {
+            oralTonePixels++;
+          }
+
+          if (r > 90 && g > 40 && b > 20 && (max - min) > 15 && r > g && g > b) {
+            skinTonePixels++;
+          }
+
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          sumLum += lum;
+          sumLumSq += lum * lum;
+          if (lum < 15 || lum > 240) {
+            extremePixels++;
+          }
         }
 
         const meanDiff = totalDiff / pixelCount;
         const meanSat = (totalSat / pixelCount) * 100;
+        const coloredRatio = coloredPixels / pixelCount;
+        const oralRatio = oralTonePixels / pixelCount;
+        const skinRatio = skinTonePixels / pixelCount;
+        const extremeRatio = extremePixels / pixelCount;
+        const meanLum = sumLum / pixelCount;
+        const stdDevLum = Math.sqrt(Math.max(0, (sumLumSq / pixelCount) - (meanLum * meanLum)));
 
-        // Color intraoral photos (like mouth selfies) have high saturation & high channel divergence
-        if (meanDiff > 40 && meanSat > 40) {
+        if (meanSat > 9.0 || meanDiff > 6.5 || coloredRatio > 0.025) {
+          let detectedType = 'General photos';
+          if (oralRatio > 0.06) {
+            detectedType = 'Intraoral photos';
+          } else if (skinRatio > 0.06) {
+            detectedType = 'Selfies / Color photos';
+          }
+
           return resolve({
             valid: false,
-            message: 'Unsupported image modality: SmileGuard AI accepts dental X-ray images only (panoramic, bitewing, or periapical X-rays). Intraoral photographs or non-dental images are not supported.'
+            isModalityError: true,
+            category: detectedType,
+            message: `The uploaded image was identified as an unsupported ${detectedType.toLowerCase().replace(/s$/, '')}. SmileGuard AI strictly requires radiological dental X-rays.`,
+            stats: `Color saturation: ${meanSat.toFixed(1)}%, Chroma divergence: ${meanDiff.toFixed(1)}`
           });
         }
 
-        return resolve({ valid: true });
+        if (stdDevLum < 9.0) {
+          return resolve({
+            valid: false,
+            isModalityError: true,
+            category: 'Blank / Low-contrast image',
+            message: 'The uploaded file has insufficient radiographic contrast or is blank. Please provide a clear dental X-ray.'
+          });
+        }
+
+        if (extremeRatio > 0.75) {
+          return resolve({
+            valid: false,
+            isModalityError: true,
+            category: 'General photos / Documents',
+            message: 'Detected document, text scan, or high-contrast line art rather than a dental radiograph.'
+          });
+        }
+
+        const aspectRatio = img.width / img.height;
+        let subModality = 'Dental X-Ray';
+        if (aspectRatio >= 1.55) {
+          subModality = 'Panoramic X-ray (OPG)';
+        } else if (aspectRatio >= 1.15) {
+          subModality = 'Bitewing X-ray';
+        } else {
+          subModality = 'Periapical X-ray';
+        }
+
+        return resolve({
+          valid: true,
+          modality: subModality
+        });
       };
 
       img.onerror = () => {
         URL.revokeObjectURL(objectUrl);
         resolve({
           valid: false,
-          message: 'Failed to read image file. File may be corrupted.'
+          isModalityError: false,
+          category: 'Corrupted File',
+          message: 'Failed to read image file. The file may be damaged or corrupted.'
         });
       };
 
@@ -167,49 +262,91 @@ export default function AiDiagnostic() {
     });
   };
 
+  const performCloudinaryUpload = async (fileToUpload) => {
+    const targetFile = fileToUpload || uploadedFile;
+    if (!targetFile) return null;
+
+    setIsCloudinaryUploading(true);
+    setCloudinaryError('');
+    try {
+      const res = await uploadToCloudinary(targetFile, 'dental_xrays');
+      setCloudinaryUrl(res.url);
+      return res.url;
+    } catch (err) {
+      console.error('Cloudinary upload error:', err);
+      setCloudinaryError(err.message || 'Failed to upload image to Cloudinary.');
+      return null;
+    } finally {
+      setIsCloudinaryUploading(false);
+    }
+  };
+
   const handleFileSelect = async (file) => {
     if (!file) return;
 
-    setValidationError('');
+    setValidationError(null);
     setApiError('');
     setAnalysisResult(null);
     setHasReviewedAiOutput(false);
     setClinicalInterpretation('');
     setFinalClinicalDecision('');
     setReviewSavedSuccess(false);
+    setRejectedPreviewUrl(null);
+    setRejectedFileName('');
+    setCloudinaryUrl('');
+    setCloudinaryError('');
 
-    // Run Client Validation
     const validation = await validateXrayImage(file);
     if (!validation.valid) {
       setUploadedFile(null);
       setImagePreviewUrl(null);
-      setValidationError(validation.message);
+      setDetectedModality('');
+      setRejectedPreviewUrl(URL.createObjectURL(file));
+      setRejectedFileName(file.name);
+      setValidationError(validation);
       return;
     }
 
     setUploadedFile(file);
+    setDetectedModality(validation.modality || 'Dental X-Ray');
     setImagePreviewUrl(URL.createObjectURL(file));
+
+    performCloudinaryUpload(file);
   };
 
   const handleAnalyzeImage = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setApiError('AI analysis requires an internet connection.');
+      return;
+    }
+
     if (!uploadedFile) {
-      setValidationError('Please upload a valid Dental X-ray image first.');
+      setValidationError({
+        valid: false,
+        isModalityError: false,
+        category: 'Missing File',
+        message: 'Please select a valid Dental X-ray image first.'
+      });
       return;
     }
 
     setIsAnalyzing(true);
     setApiError('');
-    setValidationError('');
+    setValidationError(null);
     setAnalysisResult(null);
+
+    let cUrl = cloudinaryUrl;
+    if (!cUrl) {
+      cUrl = await performCloudinaryUpload(uploadedFile);
+    }
 
     const formData = new FormData();
     formData.append('file', uploadedFile);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s API timeout
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     try {
-      // Connect to FastAPI AI Backend
       const response = await fetch(API_ENDPOINTS.predict, {
         method: 'POST',
         body: formData,
@@ -220,7 +357,27 @@ export default function AiDiagnostic() {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || `Server returned error ${response.status}`);
+        const detail = errData.detail || `Server returned error ${response.status}`;
+
+        if (typeof detail === 'string' && (detail.includes('Unsupported image modality') || detail.includes('Not Supported'))) {
+          let category = 'General photos';
+          if (detail.includes('Intraoral')) category = 'Intraoral photos';
+          else if (detail.includes('Selfie')) category = 'Selfies / Color photos';
+
+          setValidationError({
+            valid: false,
+            isModalityError: true,
+            category,
+            message: detail,
+          });
+          setRejectedPreviewUrl(imagePreviewUrl);
+          setRejectedFileName(uploadedFile?.name || 'Uploaded File');
+          setUploadedFile(null);
+          setImagePreviewUrl(null);
+          return;
+        }
+
+        throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
       }
 
       const data = await response.json();
@@ -229,7 +386,7 @@ export default function AiDiagnostic() {
       clearTimeout(timeoutId);
       let msg = err.message;
       if (err.name === 'AbortError') {
-        msg = 'API request timed out after 15 seconds. Please ensure the backend is responsive.';
+        msg = 'API request timed out after 20 seconds. Please ensure the backend is responsive.';
       } else if (msg === 'Failed to fetch') {
         msg = `FastAPI AI Backend Unavailable. Please verify the server is running on ${API_BASE_URL || 'http://localhost:8000'}.`;
       }
@@ -243,7 +400,7 @@ export default function AiDiagnostic() {
   const handleSaveReview = async (e) => {
     e.preventDefault();
     if (!hasReviewedAiOutput) {
-      alert('Please confirm "☐ Reviewed AI output" checkbox before saving.');
+      alert('Please confirm "Reviewed AI output" checkbox before saving.');
       return;
     }
     if (!clinicalInterpretation.trim() || !finalClinicalDecision.trim()) {
@@ -258,18 +415,19 @@ export default function AiDiagnostic() {
       const nowIso = new Date().toISOString();
 
       if (db) {
-        // 1. Create dentalXrays document
+        const savedImageUrl = cloudinaryUrl || imagePreviewUrl || 'xray_image_url';
+
         const xrayDocRef = await addDoc(collection(db, 'dentalXrays'), {
           patientId: patientId,
           uploadedBy: 'Dr. Ana Santos',
-          imageUrl: imagePreviewUrl || 'xray_image_url',
+          imageUrl: savedImageUrl,
+          cloudinaryUrl: cloudinaryUrl || null,
           uploadedAt: nowIso,
           analysisStatus: 'Analyzed',
           imageType: 'Dental X-ray',
           createdAt: serverTimestamp(),
         });
 
-        // 2. Create aiPredictions document
         const predDocRef = await addDoc(collection(db, 'aiPredictions'), {
           patientId: patientId,
           xrayId: xrayDocRef.id,
@@ -281,7 +439,6 @@ export default function AiDiagnostic() {
           createdAt: nowIso,
         });
 
-        // 3. Create dentistReviews document
         await addDoc(collection(db, 'dentistReviews'), {
           patientId: patientId,
           xrayId: xrayDocRef.id,
@@ -305,35 +462,58 @@ export default function AiDiagnostic() {
     }
   };
 
+  // Compute current step: 1 (Upload), 2 (Analyzing), 3 (Reviewing)
+  const currentStep = analysisResult ? 3 : isAnalyzing ? 2 : 1;
+
   return (
-    <div className="space-y-6 text-left max-w-5xl mx-auto font-sans">
+    <div className="space-y-6 text-left max-w-6xl mx-auto font-sans bg-[#FFFFFF]">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 border border-purple-800/60 rounded-2xl p-6 shadow-lg text-white space-y-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-900/60 border border-purple-700 text-purple-300 text-xs font-bold">
-          <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-          <span>Clinical Decision Support System</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 sm:p-8 rounded-[20px] bg-gradient-to-r from-[#FFFFFF] via-[#F7F5FF] to-[#FFFFFF] border border-[#E9E5F5] shadow-[0_4px_20px_rgba(100,80,180,0.06)] gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#F0ECFF] border border-[#E9E5F5] text-[#6D5AE6] text-xs font-bold mb-2">
+            <Sparkles className="h-3.5 w-3.5 text-[#8B5CF6]" />
+            <span>AI Dental Workstation</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-[#263238] tracking-tight">
+            AI Diagnostic Workstation
+          </h1>
+          <p className="text-xs sm:text-sm text-[#667085] font-medium mt-1">
+            AI-assisted dental X-ray analysis for clinical decision support.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-          AI-ASSISTED DENTAL IMAGE ANALYSIS
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-          CNN-powered feature extraction & Grad-CAM visual explainability. Supports clinical evaluation by dentists.
-        </p>
+
+        {/* 01 Upload X-ray -> 02 AI Analysis -> 03 Review Results Workflow Stepper */}
+        <div className="flex items-center gap-2 sm:gap-3 bg-[#F7F5FF] p-2 rounded-[16px] border border-[#E9E5F5] self-start sm:self-center">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold ${currentStep >= 1 ? 'bg-[#FFFFFF] text-[#6D5AE6] shadow-xs border border-[#E9E5F5]' : 'text-[#667085]'}`}>
+            <span className="h-5 w-5 rounded-full bg-[#F0ECFF] text-[#8B5CF6] text-[11px] font-black flex items-center justify-center">01</span>
+            <span>Upload</span>
+          </div>
+          <span className="text-[#667085] text-xs font-bold">&rarr;</span>
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold ${currentStep >= 2 ? 'bg-[#FFFFFF] text-[#6D5AE6] shadow-xs border border-[#E9E5F5]' : 'text-[#667085]'}`}>
+            <span className="h-5 w-5 rounded-full bg-[#F0ECFF] text-[#8B5CF6] text-[11px] font-black flex items-center justify-center">02</span>
+            <span>AI Analysis</span>
+          </div>
+          <span className="text-[#667085] text-xs font-bold">&rarr;</span>
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold ${currentStep >= 3 ? 'bg-[#FFFFFF] text-[#6D5AE6] shadow-xs border border-[#E9E5F5]' : 'text-[#667085]'}`}>
+            <span className="h-5 w-5 rounded-full bg-[#F0ECFF] text-[#8B5CF6] text-[11px] font-black flex items-center justify-center">03</span>
+            <span>Review</span>
+          </div>
+        </div>
       </div>
 
-      {/* Main Analysis Input Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+      {/* Main Upload Input Card */}
+      <div className="bg-[#FFFFFF] border border-[#E9E5F5] rounded-[20px] p-6 sm:p-8 shadow-[0_4px_20px_rgba(100,80,180,0.06)] space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           {/* Patient Selector */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
-              <User className="h-4 w-4 text-purple-600" />
-              <span>Select Patient</span>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#667085] mb-2 flex items-center gap-2">
+              <User className="h-4 w-4 text-[#8B5CF6]" />
+              <span>Select Patient Record</span>
             </label>
             <select
               value={selectedPatientId}
               onChange={handlePatientChange}
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-slate-50 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-3 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] text-xs font-bold text-[#263238] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
             >
               {patients.length === 0 ? (
                 <option value="p1">Maria Santos (Patient ID #10024)</option>
@@ -348,19 +528,19 @@ export default function AiDiagnostic() {
           </div>
 
           {/* Modality Requirements Box */}
-          <div className="p-4 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-900 text-xs space-y-2">
-            <div className="flex items-center gap-2 font-bold text-purple-800">
-              <Scan className="h-4 w-4 text-purple-600" />
-              <span>Dental X-Ray Modality Requirements</span>
+          <div className="p-4 rounded-[14px] bg-[#F7F5FF] border border-[#E9E5F5] text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#6D5AE6]">
+              <Scan className="h-4 w-4 text-[#8B5CF6]" />
+              <span>Radiological Modality Guide</span>
             </div>
             
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div>
-                <span className="font-bold text-emerald-700 block mb-0.5">Supported:</span>
-                <ul className="space-y-0.5 text-slate-700 font-medium">
+                <span className="font-bold text-emerald-700 block mb-0.5">Supported X-Rays:</span>
+                <ul className="space-y-0.5 text-[#263238] font-semibold">
                   <li className="flex items-center gap-1">
                     <Check className="h-3 w-3 text-emerald-600" />
-                    <span>Panoramic X-ray</span>
+                    <span>Panoramic X-ray (OPG)</span>
                   </li>
                   <li className="flex items-center gap-1">
                     <Check className="h-3 w-3 text-emerald-600" />
@@ -374,8 +554,8 @@ export default function AiDiagnostic() {
               </div>
 
               <div>
-                <span className="font-bold text-rose-700 block mb-0.5">Not Supported:</span>
-                <ul className="space-y-0.5 text-slate-500 font-medium">
+                <span className="font-bold text-rose-600 block mb-0.5">Not Supported:</span>
+                <ul className="space-y-0.5 text-[#667085] font-semibold">
                   <li className="flex items-center gap-1">
                     <X className="h-3 w-3 text-rose-500" />
                     <span>Intraoral photos</span>
@@ -395,9 +575,9 @@ export default function AiDiagnostic() {
         </div>
 
         {/* File Upload Drop Zone */}
-        <div className="space-y-3">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
-            Upload Dental X-Ray File
+        <div className="space-y-2">
+          <label className="block text-xs font-bold uppercase tracking-wider text-[#667085]">
+            Upload Dental Radiograph
           </label>
           <div
             onClick={() => fileInputRef.current?.click()}
@@ -409,19 +589,21 @@ export default function AiDiagnostic() {
                 handleFileSelect(e.dataTransfer.files[0]);
               }
             }}
-            className="border-2 border-dashed border-slate-300 hover:border-purple-500 bg-slate-50/50 hover:bg-purple-50/20 rounded-2xl p-8 text-center transition-all flex flex-col items-center justify-center space-y-3 cursor-pointer group"
+            className="border-2 border-dashed border-[#E9E5F5] hover:border-[#8B5CF6] bg-[#F7F5FF]/50 hover:bg-[#F0ECFF]/30 rounded-[18px] p-8 text-center transition-all flex flex-col items-center justify-center space-y-3 cursor-pointer group"
           >
-            <UploadCloud className="h-10 w-10 text-purple-600 group-hover:scale-110 transition-transform" />
+            <div className="h-14 w-14 rounded-2xl bg-[#F0ECFF] text-[#8B5CF6] border border-[#E9E5F5] flex items-center justify-center group-hover:scale-110 transition-transform">
+              <UploadCloud className="h-7 w-7" />
+            </div>
             <div>
-              <p className="text-xs font-bold text-slate-800">Drag & drop radiological X-ray file or click anywhere to Browse</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Supported formats: JPG, JPEG, PNG, WEBP, BMP, JFIF (Max 25MB)</p>
+              <p className="text-sm font-bold text-[#263238]">Drag and drop your dental X-ray here</p>
+              <p className="text-xs text-[#667085] mt-1">Supported formats: JPG, PNG, DICOM, WEBP, BMP (Max 25MB)</p>
             </div>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-              className="cursor-pointer px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow transition-all inline-flex items-center gap-2"
+              className="cursor-pointer px-6 py-2.5 bg-[#8B5CF6] hover:bg-[#6D5AE6] text-white font-bold text-xs rounded-[11px] shadow-sm transition-all inline-flex items-center gap-2"
             >
-              <span>Browse X-Ray Image</span>
+              <span>Select Dental X-Ray</span>
             </button>
             <input
               ref={fileInputRef}
@@ -438,219 +620,318 @@ export default function AiDiagnostic() {
           </div>
         </div>
 
-        {/* Client Validation Error Alert */}
+        {/* Modality Validation Error Alert */}
         {validationError && (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-medium space-y-1">
-            <div className="flex items-center gap-2 font-bold text-rose-700">
-              <FileWarning className="h-4 w-4 text-rose-600 shrink-0" />
-              <span>Image Validation Error</span>
+          <div className="p-6 rounded-[18px] bg-rose-50/70 border border-rose-200 space-y-4 animate-fade-in">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3.5">
+                <div className="p-3 rounded-xl bg-rose-600 text-white shadow-xs shrink-0">
+                  <ShieldAlert className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white">
+                      Modality Error
+                    </span>
+                    {validationError.category && (
+                      <span className="text-xs font-bold text-rose-950 bg-rose-200/70 px-2 py-0.5 rounded-md">
+                        Detected: {validationError.category}
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-base font-black text-[#263238]">
+                    Unsupported Image Modality (Not a Dental X-Ray)
+                  </h4>
+                  <p className="text-xs text-[#667085] leading-relaxed font-medium">
+                    {validationError.message || 'SmileGuard AI strictly accepts radiological dental X-rays only.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setValidationError(null);
+                  setRejectedPreviewUrl(null);
+                  setRejectedFileName('');
+                }}
+                className="text-[#667085] hover:text-[#263238] p-1.5 rounded-lg hover:bg-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <p className="text-slate-700 leading-relaxed pl-6">{validationError}</p>
           </div>
         )}
 
         {/* Live Upload Preview & Trigger Button */}
         {imagePreviewUrl && !validationError && (
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-4 rounded-[16px] bg-[#F7F5FF] border border-[#E9E5F5] flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <img
                 src={imagePreviewUrl}
                 alt="Selected X-ray preview"
-                className="h-16 w-16 object-cover rounded-lg border border-slate-300 shadow-sm"
+                className="h-16 w-16 object-cover rounded-xl border border-[#E9E5F5] shadow-xs"
               />
               <div>
-                <p className="text-xs font-bold text-slate-900">{uploadedFile?.name || 'xray.png'}</p>
-                <p className="text-[10px] text-slate-400 font-mono">
-                  {(uploadedFile?.size ? uploadedFile.size / 1024 : 120).toFixed(1)} KB • Valid Dental X-Ray Format
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-bold text-[#263238]">{uploadedFile?.name || 'xray.png'}</p>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                    <Check className="h-3 w-3 text-emerald-600" />
+                    <span>{detectedModality || 'Dental X-Ray'}</span>
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <p className="text-[10px] text-[#667085] font-mono">
+                    {(uploadedFile?.size ? uploadedFile.size / 1024 : 120).toFixed(1)} KB • Validated Radiological Modality
+                  </p>
+
+                  {isCloudinaryUploading && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F0ECFF] text-[#6D5AE6] border border-[#E9E5F5] flex items-center gap-1 animate-pulse">
+                      <Spinner size="xs" className="text-[#8B5CF6]" />
+                      <span>Uploading to Cloudinary CDN...</span>
+                    </span>
+                  )}
+
+                  {cloudinaryUrl && (
+                    <a
+                      href={cloudinaryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FFFFFF] hover:bg-[#F7F5FF] text-[#6D5AE6] border border-[#E9E5F5] flex items-center gap-1 transition-colors"
+                    >
+                      <Cloud className="h-3 w-3 text-[#8B5CF6]" />
+                      <span>Stored on Cloudinary</span>
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
             <button
               onClick={handleAnalyzeImage}
               disabled={isAnalyzing}
-              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+              className="w-full sm:w-auto px-6 py-3 bg-[#8B5CF6] hover:bg-[#6D5AE6] text-white font-bold text-xs rounded-[11px] shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             >
               {isAnalyzing ? (
                 <>
                   <Spinner size="sm" className="text-white" />
-                  <span>Analyzing dental image...</span>
+                  <span>Analyzing Dental Image...</span>
                 </>
               ) : (
                 <>
                   <Scan className="h-4 w-4" />
-                  <span>Analyze Image</span>
+                  <span>Analyze X-Ray</span>
                 </>
               )}
             </button>
           </div>
         )}
 
-        {/* API Notice / Model Not Trained Protection Alert */}
+        {/* API Error Alert */}
         {apiError && (
           <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium space-y-1">
             <div className="flex items-center gap-2 font-bold text-amber-800">
               <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-              <span>Model Status Notice</span>
+              <span>AI Service Notice</span>
             </div>
-            <p className="text-slate-800 font-semibold pl-6">{apiError}</p>
-            <p className="text-[11px] text-slate-600 pl-6 mt-1">
-              SmileGuard AI strictly prevents synthetic predictions. Upload a dataset to <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900">backend/dataset/</code> and execute <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900">python backend/train.py</code> to train the CNN.
-            </p>
+            <p className="text-[#263238] font-semibold pl-6">{apiError}</p>
           </div>
         )}
       </div>
 
-      {/* Loading Progress State */}
+      {/* Polished Skeleton Loading State during AI Analysis */}
       {isAnalyzing && (
-        <div className="p-8 rounded-2xl bg-white border border-purple-200 shadow-md text-center space-y-3">
-          <Spinner size="lg" className="text-purple-600 mx-auto" />
-          <h3 className="text-sm font-bold text-slate-900">Analyzing dental X-ray...</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Processing image through EfficientNetB0 feature extraction and generating Grad-CAM visual attention overlays.
+        <div className="p-8 rounded-[20px] bg-[#FFFFFF] border border-[#E9E5F5] shadow-[0_4px_20px_rgba(100,80,180,0.06)] text-center space-y-4">
+          <div className="h-12 w-12 rounded-2xl bg-[#F0ECFF] text-[#8B5CF6] flex items-center justify-center mx-auto animate-pulse">
+            <Spinner size="md" className="text-[#8B5CF6]" />
+          </div>
+          <h3 className="text-base font-bold text-[#263238]">Analyzing Dental X-Ray...</h3>
+          <p className="text-xs text-[#667085] max-w-md mx-auto leading-relaxed">
+            Running EfficientNetB0 feature extraction and generating Grad-CAM visual attention overlays for clinician review.
           </p>
+          <div className="max-w-md mx-auto space-y-2 pt-2">
+            <div className="h-2 w-full bg-[#F7F5FF] rounded-full overflow-hidden">
+              <div className="h-full bg-[#8B5CF6] rounded-full animate-pulse" style={{ width: '70%' }} />
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Analysis Result Output */}
+      {/* Professional AI Results Layout */}
       {analysisResult && (
         <div className="space-y-6 animate-fade-in">
-          {/* Result Stats Header */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                AI-ASSISTED X-RAY ANALYSIS
-              </h3>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                <span className="bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
-                  Patient: {selectedPatientName}
-                </span>
-                <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-mono text-[11px]">
-                  {selectedPatientId || 'PATIENT_REF'}
-                </span>
-              </div>
+          {/* Highlight Banner: Requires Dentist Review */}
+          <div className="p-4 rounded-[16px] bg-[#F0ECFF] border border-[#E9E5F5] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold text-[#6D5AE6]">
+            <div className="flex items-center gap-2.5">
+              <ShieldAlert className="h-5 w-5 text-[#8B5CF6]" />
+              <span className="text-sm font-black">Requires Dentist Review</span>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 space-y-1">
-                <p className="text-[10px] font-bold uppercase text-purple-700">AI Model Output</p>
-                <p className="text-base font-black text-slate-900">{analysisResult.prediction}</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
-                <p className="text-[10px] font-bold uppercase text-emerald-700">Confidence Score</p>
-                <p className="text-2xl font-black text-emerald-900">{analysisResult.confidence}%</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <p className="text-[10px] font-bold uppercase text-slate-400">Model Architecture</p>
-                <p className="text-xs font-bold text-slate-800">{analysisResult.architecture || 'EfficientNetB0'}</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <p className="text-[10px] font-bold uppercase text-slate-400">Analysis Date</p>
-                <p className="text-xs font-bold text-slate-800">
-                  {new Date(analysisResult.timestamp || Date.now()).toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            {/* Class Probabilities Breakdown */}
-            <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                CLASS PROBABILITIES BREAKDOWN
-              </p>
-              <div className="space-y-2.5">
-                {['Dental Caries', 'Impacted Teeth', 'Infection'].map((cName, idx) => {
-                  let pctStr = '0.00';
-                  if (analysisResult.probabilities && analysisResult.probabilities[cName] !== undefined) {
-                    pctStr = (analysisResult.probabilities[cName] * 100).toFixed(2);
-                  } else if (analysisResult.rawVector && analysisResult.rawVector[idx] !== undefined) {
-                    pctStr = (analysisResult.rawVector[idx] * 100).toFixed(2);
-                  } else if (cName === analysisResult.prediction) {
-                    pctStr = analysisResult.confidence?.toFixed(2) || '0.00';
-                  }
-
-                  const pctVal = parseFloat(pctStr);
-                  const isTop = cName === analysisResult.prediction;
-
-                  return (
-                    <div key={cName} className="space-y-1">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className={isTop ? 'text-purple-900 font-extrabold flex items-center gap-1.5' : 'text-slate-700'}>
-                          {cName}
-                          {isTop && (
-                            <span className="text-[10px] bg-purple-600 text-white font-bold px-1.5 py-0.2 rounded">
-                              Top Output
-                            </span>
-                          )}
-                        </span>
-                        <span className={isTop ? 'text-purple-800 font-extrabold' : 'text-slate-600'}>
-                          {pctStr}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-200/70 rounded-full h-2 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            isTop ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-slate-400/60'
-                          }`}
-                          style={{ width: `${Math.min(100, Math.max(0, pctVal))}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <span className="text-[11px] text-[#667085] font-semibold bg-[#FFFFFF] px-3 py-1 rounded-full border border-[#E9E5F5]">
+              AI-assisted probabilistic findings • Final clinical decision rests with dentist
+            </span>
           </div>
 
-          {/* Dual Side-by-Side Images */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Original X-Ray */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">ORIGINAL X-RAY</h3>
-              <div className="aspect-video rounded-xl bg-slate-950 flex items-center justify-center overflow-hidden border border-slate-800">
-                <img
-                  src={imagePreviewUrl}
-                  alt="Original Dental X-ray"
-                  className="max-h-64 object-contain"
-                />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column (7 cols): Professional X-Ray Viewer with Tabs & Controls */}
+            <div className="lg:col-span-7 bg-[#FFFFFF] border border-[#E9E5F5] rounded-[20px] p-6 shadow-[0_4px_20px_rgba(100,80,180,0.06)] space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E9E5F5] pb-4">
+                <div className="flex items-center gap-2">
+                  <Scan className="h-4 w-4 text-[#8B5CF6]" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#667085]">
+                    Dental X-Ray Viewer
+                  </h3>
+                </div>
+
+                {/* View Tabs: Original | Grad-CAM | Overlay */}
+                <div className="flex items-center gap-1 bg-[#F7F5FF] p-1 rounded-xl border border-[#E9E5F5]">
+                  {[
+                    { id: 'original', label: 'Original' },
+                    { id: 'gradcam', label: 'Grad-CAM' },
+                    { id: 'overlay', label: 'Overlay' },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setViewerTab(t.id)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        viewerTab === t.id
+                          ? 'bg-[#FFFFFF] text-[#6D5AE6] shadow-xs border border-[#E9E5F5]'
+                          : 'text-[#667085] hover:text-[#263238]'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Main Viewer Display Stage */}
+              <div className="relative aspect-video rounded-[14px] bg-[#000000] flex items-center justify-center overflow-hidden border border-[#E9E5F5] group">
+                <img
+                  src={
+                    viewerTab === 'original'
+                      ? (cloudinaryUrl || imagePreviewUrl)
+                      : viewerTab === 'gradcam'
+                      ? (analysisResult.heatmap || analysisResult.overlay || imagePreviewUrl)
+                      : (analysisResult.overlay || imagePreviewUrl)
+                  }
+                  alt="Dental X-ray radiological view"
+                  className="max-h-72 object-contain transition-transform duration-200"
+                  style={{ transform: `scale(${zoomScale})` }}
+                />
+
+                {/* Viewer Tools Controls (Zoom, Reset, Fit) */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-[#FFFFFF]/90 backdrop-blur-md p-1.5 rounded-xl border border-[#E9E5F5] shadow-xs">
+                  <button
+                    onClick={() => setZoomScale((z) => Math.min(z + 0.25, 2.5))}
+                    className="p-1.5 rounded-lg text-[#263238] hover:bg-[#F7F5FF] font-bold text-xs"
+                    title="Zoom In"
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={() => setZoomScale((z) => Math.max(z - 0.25, 0.75))}
+                    className="p-1.5 rounded-lg text-[#263238] hover:bg-[#F7F5FF] font-bold text-xs"
+                    title="Zoom Out"
+                  >
+                    -
+                  </button>
+                  <button
+                    onClick={() => setZoomScale(1)}
+                    className="px-2 py-1 rounded-lg text-[#667085] hover:bg-[#F7F5FF] text-[10px] font-bold"
+                  >
+                    Reset Fit
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs text-[#667085] font-medium leading-relaxed bg-[#F7F5FF] p-3 rounded-xl border border-[#E9E5F5]">
+                {viewerTab === 'gradcam' || viewerTab === 'overlay'
+                  ? 'Highlighted Grad-CAM heatmaps indicate anatomical regions that contributed most to the model inference.'
+                  : 'Original radiological radiograph viewer for anatomical inspection.'}
+              </p>
             </div>
 
-            {/* AI Attention Visualization (Grad-CAM) */}
-            <div className="bg-white border border-purple-200 rounded-2xl p-5 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
-                  <span>AI ATTENTION VISUALIZATION</span>
-                </h3>
-                <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded">
-                  Grad-CAM
-                </span>
+            {/* Right Column (5 cols): AI Prediction & Probability Bars */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-[#FFFFFF] border border-[#E9E5F5] rounded-[20px] p-6 shadow-[0_4px_20px_rgba(100,80,180,0.06)] space-y-5">
+                <div className="border-b border-[#E9E5F5] pb-3 flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#667085]">
+                    AI PREDICTION RESULTS
+                  </h3>
+                  <span className="text-[10px] font-bold bg-[#F0ECFF] text-[#6D5AE6] px-2.5 py-0.5 rounded-full border border-[#E9E5F5]">
+                    EfficientNetB0
+                  </span>
+                </div>
+
+                {/* Primary Prediction Output Card */}
+                <div className="p-4 rounded-[16px] bg-[#F7F5FF] border border-[#E9E5F5] space-y-1">
+                  <p className="text-[10px] font-bold uppercase text-[#6D5AE6]">Top Probabilistic Finding</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xl font-black text-[#263238]">{analysisResult.prediction}</p>
+                    <span className="text-lg font-black text-[#8B5CF6]">{analysisResult.confidence}%</span>
+                  </div>
+                </div>
+
+                {/* Probability Breakdown Progress Bars */}
+                <div className="space-y-3 pt-1">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#667085]">
+                    CLASS PROBABILITIES BREAKDOWN
+                  </p>
+                  <div className="space-y-3">
+                    {['Dental Caries', 'Impacted Teeth', 'Infection'].map((cName, idx) => {
+                      let pctStr = '0.00';
+                      if (analysisResult.probabilities && analysisResult.probabilities[cName] !== undefined) {
+                        pctStr = (analysisResult.probabilities[cName] * 100).toFixed(2);
+                      } else if (analysisResult.rawVector && analysisResult.rawVector[idx] !== undefined) {
+                        pctStr = (analysisResult.rawVector[idx] * 100).toFixed(2);
+                      } else if (cName === analysisResult.prediction) {
+                        pctStr = analysisResult.confidence?.toFixed(2) || '0.00';
+                      }
+
+                      const pctVal = parseFloat(pctStr);
+                      const isTop = cName === analysisResult.prediction;
+
+                      return (
+                        <div key={cName} className="space-y-1.5">
+                          <div className="flex justify-between text-xs font-bold">
+                            <span className={isTop ? 'text-[#6D5AE6] font-extrabold flex items-center gap-1.5' : 'text-[#263238]'}>
+                              {cName}
+                              {isTop && (
+                                <span className="text-[9px] bg-[#8B5CF6] text-white font-bold px-1.5 py-0.5 rounded">
+                                  Top Output
+                                </span>
+                              )}
+                            </span>
+                            <span className={isTop ? 'text-[#8B5CF6] font-extrabold' : 'text-[#667085]'}>
+                              {pctStr}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-[#F7F5FF] rounded-full h-2.5 overflow-hidden border border-[#E9E5F5]">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                isTop ? 'bg-gradient-to-r from-[#8B5CF6] to-[#6D5AE6]' : 'bg-[#D8CFFC]'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(0, pctVal))}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="aspect-video rounded-xl bg-slate-950 flex items-center justify-center overflow-hidden border border-purple-300">
-                <img
-                  src={analysisResult.overlay || imagePreviewUrl}
-                  alt="AI Attention Visualization Overlay"
-                  className="max-h-64 object-contain"
-                />
-              </div>
-              <p className="text-xs text-slate-600 font-medium leading-relaxed bg-purple-50/60 p-3 rounded-xl border border-purple-100">
-                Highlighted regions represent areas that influenced the model output. These regions require review by the dentist.
-              </p>
             </div>
           </div>
 
           {/* Dentist Review Form */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-5">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-purple-600" />
-              <span>DENTIST REVIEW</span>
+          <div className="bg-[#FFFFFF] border border-[#E9E5F5] rounded-[20px] p-6 sm:p-8 shadow-[0_4px_20px_rgba(100,80,180,0.06)] space-y-5">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#263238] border-b border-[#E9E5F5] pb-3 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-[#8B5CF6]" />
+              <span>DENTIST CLINICAL REVIEW & FINAL DECISION</span>
             </h3>
 
             {reviewSavedSuccess && (
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-bounce">
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 <span>Dentist Review saved and synchronized to Cloud Firestore!</span>
               </div>
@@ -660,21 +941,21 @@ export default function AiDiagnostic() {
               {/* Checkbox Confirmation */}
               <label
                 onClick={() => setHasReviewedAiOutput((prev) => !prev)}
-                className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                className="flex items-center gap-3 p-4 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] cursor-pointer hover:bg-[#F0ECFF] transition-colors select-none"
               >
                 {hasReviewedAiOutput ? (
-                  <CheckSquare className="h-5 w-5 text-purple-600 shrink-0" />
+                  <CheckSquare className="h-5 w-5 text-[#8B5CF6] shrink-0" />
                 ) : (
-                  <Square className="h-5 w-5 text-slate-400 shrink-0" />
+                  <Square className="h-5 w-5 text-[#667085] shrink-0" />
                 )}
-                <span className="text-xs font-bold text-slate-800">
+                <span className="text-xs font-bold text-[#263238]">
                   Reviewed AI output & visual attention region
                 </span>
               </label>
 
               {/* Clinical Interpretation Text Area */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-[#263238] mb-1.5">
                   Clinical Interpretation
                 </label>
                 <textarea
@@ -683,13 +964,13 @@ export default function AiDiagnostic() {
                   value={clinicalInterpretation}
                   onChange={(e) => setClinicalInterpretation(e.target.value)}
                   placeholder="Enter detailed radiological and clinical observations..."
-                  className="w-full p-3 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full p-3.5 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] text-xs font-medium text-[#263238] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                 />
               </div>
 
               {/* Final Clinical Decision Text Area */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-[#263238] mb-1.5">
                   Final Clinical Decision
                 </label>
                 <textarea
@@ -698,7 +979,7 @@ export default function AiDiagnostic() {
                   value={finalClinicalDecision}
                   onChange={(e) => setFinalClinicalDecision(e.target.value)}
                   placeholder="State final diagnosis, treatment plan recommendations, or follow-up procedures..."
-                  className="w-full p-3 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full p-3.5 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] text-xs font-medium text-[#263238] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                 />
               </div>
 
@@ -706,17 +987,17 @@ export default function AiDiagnostic() {
               <button
                 type="submit"
                 disabled={isSavingReview}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center gap-2 disabled:opacity-60"
+                className="px-6 py-3 bg-[#8B5CF6] hover:bg-[#6D5AE6] text-white font-bold text-xs rounded-[11px] shadow-sm transition-all flex items-center gap-2 disabled:opacity-60 cursor-pointer"
               >
                 {isSavingReview ? (
                   <>
                     <Spinner size="sm" className="text-white" />
-                    <span>Saving Review to Firestore...</span>
+                    <span>Saving Review...</span>
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4" />
-                    <span>Save Review</span>
+                    <span>Save Dentist Review</span>
                   </>
                 )}
               </button>
@@ -726,15 +1007,16 @@ export default function AiDiagnostic() {
       )}
 
       {/* Mandatory Clinical Disclaimer Footer */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs text-center space-y-1">
-        <div className="flex items-center justify-center gap-2 text-purple-400 font-bold">
-          <ShieldAlert className="h-4 w-4" />
+      <div className="p-4 rounded-[14px] bg-[#F7F5FF] border border-[#E9E5F5] text-[#667085] text-xs text-center space-y-1">
+        <div className="flex items-center justify-center gap-2 text-[#6D5AE6] font-bold">
+          <ShieldAlert className="h-4 w-4 text-[#8B5CF6]" />
           <span>CLINICAL DECISION SUPPORT DISCLAIMER</span>
         </div>
-        <p className="text-[11px] text-slate-400 max-w-3xl mx-auto leading-relaxed">
-          AI-assisted analysis only. Final interpretation and clinical decisions remain with the dentist.
+        <p className="text-[11px] text-[#667085] max-w-3xl mx-auto leading-relaxed">
+          AI-assisted analysis provides probabilistic findings and visual explanations. Final clinical decisions remain with the dentist.
         </p>
       </div>
     </div>
   );
 }
+

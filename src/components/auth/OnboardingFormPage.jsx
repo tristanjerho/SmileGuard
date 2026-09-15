@@ -17,8 +17,16 @@ import { useAuth } from '../../context/AuthContext';
 import Spinner from './Spinner';
 import DobPicker from '../common/DobPicker';
 
-export default function OnboardingFormPage({ onCompleted }) {
+export default function OnboardingFormPage({ onCompleted, onLogout }) {
   const { currentUser, userProfile, logout, updateUserProfile } = useAuth();
+
+  const handleSignOut = async () => {
+    if (onLogout) {
+      await onLogout();
+    } else {
+      await logout();
+    }
+  };
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -165,28 +173,30 @@ export default function OnboardingFormPage({ onCompleted }) {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-slate-950 text-white flex flex-col justify-between p-4 sm:p-8 font-sans relative overflow-x-hidden">
+    <div className="min-h-screen w-screen bg-[#F7F5FF] text-slate-800 flex flex-col justify-between p-4 sm:p-8 font-sans relative overflow-x-hidden">
       {/* Background Lighting */}
-      <div className="absolute top-0 left-1/3 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/3 w-96 h-96 bg-purple-200/40 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
       <header className="z-10 flex items-center justify-between max-w-4xl w-full mx-auto pb-4">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-sm shadow-md">
-            SG
+          <div className="h-10 w-10 rounded-xl bg-purple-600 flex items-center justify-center text-white shadow-md shadow-purple-200">
+            <svg className="w-6 h-6 fill-current text-white" viewBox="0 0 24 24">
+              <path d="M12 2C8.5 2 6 4.5 6 7.5C6 9.5 7 11 7.5 13C8 15 8.5 18 9.5 21C9.8 21.9 10.7 22 11.2 21.3C11.7 20.6 12 18.5 12 18.5C12 18.5 12.3 20.6 12.8 21.3C13.3 22 14.2 21.9 14.5 21C15.5 18 16 15 16.5 13C17 11 18 9.5 18 7.5C18 4.5 15.5 2 12 2Z" />
+            </svg>
           </div>
           <div className="text-left">
-            <span className="text-base font-black tracking-tight text-white block">
-              SmileGuard <span className="text-teal-400">AI</span>
+            <span className="text-base font-black tracking-tight text-slate-900 block">
+              SmileGuard <span className="text-purple-600">AI</span>
             </span>
-            <span className="text-[10px] text-slate-400 font-semibold">Patient Onboarding Portal</span>
+            <span className="text-[10px] text-slate-500 font-semibold">Patient Onboarding Portal</span>
           </div>
         </div>
 
         <button
-          onClick={logout}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-all"
+          onClick={handleSignOut}
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-white border border-[#E9E5F5] text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-purple-700 transition-all shadow-sm"
         >
           <LogOut className="h-3.5 w-3.5" />
           <span>Sign Out</span>
@@ -196,38 +206,38 @@ export default function OnboardingFormPage({ onCompleted }) {
       {/* Main Container */}
       <main className="z-10 max-w-3xl w-full mx-auto my-auto space-y-6">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-teal-950/80 via-slate-900 to-emerald-950/80 border border-teal-800/60 rounded-2xl p-6 shadow-xl text-left space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-900/60 border border-teal-700 text-teal-300 text-xs font-bold">
-            <ShieldCheck className="h-3.5 w-3.5 text-teal-400" />
+        <div className="bg-white border border-[#E9E5F5] rounded-2xl p-6 shadow-xl shadow-purple-900/5 text-left space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold">
+            <ShieldCheck className="h-3.5 w-3.5 text-purple-600" />
             <span>Mandatory First-Time Setup</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Complete Your Patient Medical Profile
           </h1>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
             To ensure personalized dental care and HIPAA safety, please complete your patient registration before accessing your dashboard.
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6 text-left">
+        <div className="bg-white border border-[#E9E5F5] rounded-2xl p-6 sm:p-8 shadow-xl shadow-purple-900/5 backdrop-blur-xl space-y-6 text-left">
           {errorMsg && (
-            <div className="p-4 rounded-xl bg-red-950/80 border border-red-800 text-red-300 text-xs font-medium flex items-center gap-2.5 animate-slide-up">
-              <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2.5 animate-slide-up">
+              <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {warningMsg && (
-            <div className="p-3.5 rounded-xl bg-amber-950/80 border border-amber-800 text-amber-300 text-xs font-medium flex items-center gap-2.5">
-              <Info className="h-4 w-4 text-amber-400 shrink-0" />
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium flex items-center gap-2.5">
+              <Info className="h-4 w-4 text-amber-600 shrink-0" />
               <span>{warningMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-700 text-emerald-200 text-xs font-semibold flex items-center gap-2.5 animate-bounce">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-bounce">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
@@ -235,15 +245,15 @@ export default function OnboardingFormPage({ onCompleted }) {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Section 1: Personal Details */}
             <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-teal-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-purple-600 border-b border-purple-100 pb-2 flex items-center gap-2">
                 <User className="h-4 w-4" />
                 <span>1. Personal & Contact Info</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Full Name <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Full Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -252,13 +262,13 @@ export default function OnboardingFormPage({ onCompleted }) {
                     value={formData.fullName}
                     onChange={handleChange}
                     placeholder="e.g. Maria Santos"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Phone Number <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Phone Number <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -267,7 +277,7 @@ export default function OnboardingFormPage({ onCompleted }) {
                     value={formData.phone}
                     onChange={handleChange}
                     placeholder="e.g. 0917 123 4567"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
                   />
                 </div>
 
@@ -280,14 +290,14 @@ export default function OnboardingFormPage({ onCompleted }) {
                 />
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Gender
                   </label>
                   <select
                     name="gender"
                     value={formData.gender}
                     onChange={handleChange}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
                   >
                     <option value="Female">Female</option>
                     <option value="Male">Male</option>
@@ -297,7 +307,7 @@ export default function OnboardingFormPage({ onCompleted }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Home Address
                 </label>
                 <input
@@ -306,22 +316,22 @@ export default function OnboardingFormPage({ onCompleted }) {
                   value={formData.address}
                   onChange={handleChange}
                   placeholder="e.g. 123 Dental St, Quezon City, Metro Manila"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
                 />
               </div>
             </div>
 
             {/* Section 2: Emergency Contact */}
             <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-teal-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-purple-600 border-b border-purple-100 pb-2 flex items-center gap-2">
                 <HeartPulse className="h-4 w-4" />
                 <span>2. Emergency Contact</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Emergency Contact Name <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Emergency Contact Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -330,13 +340,13 @@ export default function OnboardingFormPage({ onCompleted }) {
                     value={formData.emergencyContactName}
                     onChange={handleChange}
                     placeholder="e.g. Juan Santos (Spouse / Parent)"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Emergency Contact Phone <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Emergency Contact Phone <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -345,7 +355,7 @@ export default function OnboardingFormPage({ onCompleted }) {
                     value={formData.emergencyContactPhone}
                     onChange={handleChange}
                     placeholder="e.g. 0918 987 6543"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
                   />
                 </div>
               </div>
@@ -353,14 +363,14 @@ export default function OnboardingFormPage({ onCompleted }) {
 
             {/* Section 3: Medical History & Allergies */}
             <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-teal-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-purple-600 border-b border-purple-100 pb-2 flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 <span>3. Dental & Medical Background</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Known Allergies
                   </label>
                   <input
@@ -369,12 +379,12 @@ export default function OnboardingFormPage({ onCompleted }) {
                     value={formData.allergies}
                     onChange={handleChange}
                     placeholder="e.g. Penicillin, Latex, None"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Medical History & Dental Concerns
                   </label>
                   <input
@@ -383,7 +393,7 @@ export default function OnboardingFormPage({ onCompleted }) {
                     value={formData.medicalHistory}
                     onChange={handleChange}
                     placeholder="e.g. Braces, Hypertension, Routine Checkup"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
                   />
                 </div>
               </div>
@@ -393,11 +403,11 @@ export default function OnboardingFormPage({ onCompleted }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-teal-500/20 transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-60"
+              className="w-full py-3.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-200 transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-60"
             >
               {isLoading ? (
                 <>
-                  <Spinner size="sm" className="text-slate-950" />
+                  <Spinner size="sm" className="text-white" />
                   <span>Saving Patient Record...</span>
                 </>
               ) : (

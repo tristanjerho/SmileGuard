@@ -19,7 +19,7 @@ import { syncUserWithFirestore } from '../../services/userService';
  * Interactive LoginForm component with complete Firebase Authentication handling,
  * real-time validation, accessibility attributes, and responsive design.
  */
-export default function LoginForm({ onSuccess, onToggleViewMode }) {
+export default function LoginForm({ onSuccess, onToggleViewMode, onSwitchToAdmin }) {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -205,6 +205,25 @@ export default function LoginForm({ onSuccess, onToggleViewMode }) {
 
   return (
     <div className="w-full max-w-md mx-auto space-y-6 animate-fade-in">
+      {/* Role Selection Toggle */}
+      {onSwitchToAdmin && (
+        <div className="flex items-center justify-center p-1 rounded-xl bg-[#F7F5FF] border border-[#E9E5F5] max-w-xs mx-auto mb-2 shadow-xs">
+          <button
+            type="button"
+            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold bg-white text-[#6D5AE6] shadow-xs border border-[#E9E5F5]"
+          >
+            👤 Patient Sign In
+          </button>
+          <button
+            type="button"
+            onClick={onSwitchToAdmin}
+            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold text-[#667085] hover:text-[#6D5AE6] transition-colors"
+          >
+            🩺 Dentist / Admin
+          </button>
+        </div>
+      )}
+
       {/* Header section inside card */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">

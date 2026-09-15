@@ -83,8 +83,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = async () => {
+    if (currentUser?.uid) {
+      localStorage.removeItem(`smileguard_profile_${currentUser.uid}`);
+    }
     if (auth) {
-      await signOut(auth);
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.warn("SignOut error:", err.message);
+      }
     }
     setCurrentUser(null);
     setUserProfile(null);

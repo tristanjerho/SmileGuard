@@ -23,6 +23,7 @@ export default function DentistDashboard() {
   const [pendingApptsCount, setPendingApptsCount] = useState(0);
   const [activeTreatmentsCount, setActiveTreatmentsCount] = useState(0);
   const [aiScansCount, setAiScansCount] = useState(0);
+  const [pendingLabsCount, setPendingLabsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Time Range Filter State: '6m' | '30d' | '7d'
@@ -53,7 +54,7 @@ export default function DentistDashboard() {
           patients.push(data);
         }
       });
-      setPatientCount(patients.length || snap.size);
+      setPatientCount(patients.length);
     });
 
     // 2. Subscribe to appointments collection
@@ -91,11 +92,24 @@ export default function DentistDashboard() {
       setAiScansCount(snap.size);
     });
 
+    // 5. Subscribe to laboratoryRecords collection for real pending lab count
+    const unsubLabs = onSnapshot(collection(db, 'laboratoryRecords'), (snap) => {
+      let count = 0;
+      snap.forEach((docSnap) => {
+        const d = docSnap.data();
+        if (d.status === 'Pending' || d.status === 'In Progress') {
+          count++;
+        }
+      });
+      setPendingLabsCount(count);
+    });
+
     return () => {
       unsubUsers();
       unsubAppts();
       unsubTreatments();
       unsubAiScans();
+      unsubLabs();
     };
   }, []);
 
@@ -103,11 +117,9 @@ export default function DentistDashboard() {
   const computeDiagnosisBreakdown = () => {
     if (allAppts.length === 0) {
       return [
-        { name: 'Routine Check-up', count: 42, pct: 35, color: 'bg-[#008B8B]' },
-        { name: 'Braces Adjustment', count: 32, pct: 27, color: 'bg-indigo-500' },
-        { name: 'AI Diagnostic Scan', count: 24, pct: 20, color: 'bg-purple-500' },
-        { name: 'Tooth Cleaning', count: 14, pct: 11, color: 'bg-sky-400' },
-        { name: 'Other Procedures', count: 8, pct: 7, color: 'bg-amber-400' },
+        { name: 'Routine Check-up', count: 0, pct: 0, color: 'bg-[#008B8B]' },
+        { name: 'Braces Adjustment', count: 0, pct: 0, color: 'bg-indigo-500' },
+        { name: 'AI Diagnostic Scan', count: 0, pct: 0, color: 'bg-purple-500' },
       ];
     }
 
@@ -162,15 +174,30 @@ export default function DentistDashboard() {
     return { pathD, fillD, nodes };
   };
 
-  // Compute live dataset for active timeRange
+  // Compute live dataset for active timeRange directly from real Firestore appointments
   const getActiveChartData = () => {
     if (timeRange === '7d') {
       const labels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-      const rawValues = [6, 12, 9, 15, 14, 8, 4];
-      const { pathD, fillD, nodes } = buildSmoothChartPath(rawValues);
+      const counts = [0, 0, 0, 0, 0, 0, 0];
+
+      allAppts.forEach((appt) => {
+        if (!appt.date) return;
+        const d = new Date(appt.date);
+        if (!isNaN(d.getTime())) {
+          const dayIdx = (d.getDay() + 6) % 7; // Mon = 0, Sun = 6
+          counts[dayIdx] += 1;
+        }
+      });
+
+      const currentHalf = counts.slice(3).reduce((a, b) => a + b, 0);
+      const prevHalf = counts.slice(0, 3).reduce((a, b) => a + b, 0);
+      const diffPct = prevHalf > 0 ? Math.round(((currentHalf - prevHalf) / prevHalf) * 100) : (currentHalf > 0 ? 100 : 0);
+      const growthStr = diffPct >= 0 ? `+${diffPct}% this week` : `${diffPct}% this week`;
+
+      const { pathD, fillD, nodes } = buildSmoothChartPath(counts);
       return {
         labels,
-        growth: '+14% this week',
+        growth: growthStr,
         pathD,
         fillD,
         nodes: nodes.map((n, i) => ({ ...n, label: labels[i] })),
@@ -179,24 +206,69 @@ export default function DentistDashboard() {
 
     if (timeRange === '30d') {
       const labels = ['WEEK 1', 'WEEK 2', 'WEEK 3', 'WEEK 4'];
-      const rawValues = [18, 28, 35, 48];
-      const { pathD, fillD, nodes } = buildSmoothChartPath(rawValues);
+      const counts = [0, 0, 0, 0];
+
+      allAppts.forEach((appt) => {
+        if (!appt.date) return;
+        const d = new Date(appt.date);
+        if (!isNaN(d.getTime())) {
+          const dayOfMonth = d.getDate();
+          const weekIdx = Math.min(Math.floor((dayOfMonth - 1) / 7), 3);
+          counts[weekIdx] += 1;
+        }
+      });
+
+      const currentHalf = counts[2] + counts[3];
+      const prevHalf = counts[0] + counts[1];
+      const diffPct = prevHalf > 0 ? Math.round(((currentHalf - prevHalf) / prevHalf) * 100) : (currentHalf > 0 ? 100 : 0);
+      const growthStr = diffPct >= 0 ? `+${diffPct}% this month` : `${diffPct}% this month`;
+
+      const { pathD, fillD, nodes } = buildSmoothChartPath(counts);
       return {
         labels,
-        growth: '+22% this month',
+        growth: growthStr,
         pathD,
         fillD,
         nodes: nodes.map((n, i) => ({ ...n, label: labels[i] })),
       };
     }
 
-    // Default 6 Months
-    const labels = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN'];
-    const rawValues = [32, 45, 41, 58, 84, 96];
-    const { pathD, fillD, nodes } = buildSmoothChartPath(rawValues);
+    // Default 6 Months calculation
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const now = new Date();
+    const labels = [];
+    const counts = [0, 0, 0, 0, 0, 0];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      labels.push(monthNames[d.getMonth()]);
+    }
+
+    allAppts.forEach((appt) => {
+      if (!appt.date) return;
+      const d = new Date(appt.date);
+      if (!isNaN(d.getTime())) {
+        const apptMonth = d.getMonth();
+        const apptYear = d.getFullYear();
+        for (let i = 0; i < 6; i++) {
+          const targetDate = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+          if (targetDate.getMonth() === apptMonth && targetDate.getFullYear() === apptYear) {
+            counts[i] += 1;
+            break;
+          }
+        }
+      }
+    });
+
+    const recent3 = counts[3] + counts[4] + counts[5];
+    const older3 = counts[0] + counts[1] + counts[2];
+    const diffPct = older3 > 0 ? Math.round(((recent3 - older3) / older3) * 100) : (recent3 > 0 ? 100 : 0);
+    const growthStr = diffPct >= 0 ? `+${diffPct}% growth` : `${diffPct}% growth`;
+
+    const { pathD, fillD, nodes } = buildSmoothChartPath(counts);
     return {
       labels,
-      growth: '+28% growth',
+      growth: growthStr,
       pathD,
       fillD,
       nodes: nodes.map((n, i) => ({ ...n, label: labels[i] })),
@@ -205,67 +277,66 @@ export default function DentistDashboard() {
 
   const activeChart = getActiveChartData();
 
-  // Compute accurate KPI metrics from Firestore data
+  // Compute accurate KPI metrics from real Firestore data
   const confirmedApptsCount = allAppts.filter((a) => a.status === 'Confirmed').length;
   const approvalRate =
-    allAppts.length > 0 ? Math.round((confirmedApptsCount / allAppts.length) * 100) : 96;
+    allAppts.length > 0 ? Math.round((confirmedApptsCount / allAppts.length) * 100) : 0;
   const aiUtilizationRate =
     allAppts.length > 0
-      ? Math.min(Math.round(((aiScansCount || 23) / Math.max(allAppts.length, 1)) * 100), 100)
-      : 88;
+      ? Math.min(Math.round((aiScansCount / Math.max(allAppts.length, 1)) * 100), 100)
+      : 0;
 
   const stats = [
     {
-      label: "Today's Appointments",
-      value: todayAppts.length.toString(),
-      subtext: `${pendingApptsCount} pending approval`,
-      icon: Calendar,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50 dark:bg-emerald-950/50',
+      label: "Total Patients",
+      value: patientCount.toString(),
+      subtext: `${patientCount} registered in Firestore`,
+      icon: Users,
+      color: 'text-[#8B5CF6]',
+      bg: 'bg-[#F0ECFF]',
     },
     {
-      label: 'Total Patients',
-      value: patientCount > 0 ? patientCount.toString() : '148',
-      subtext: 'Registered patient accounts',
-      icon: Users,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50 dark:bg-blue-950/50',
+      label: "Appointments Today",
+      value: todayAppts.length.toString(),
+      subtext: `${pendingApptsCount} pending confirmation`,
+      icon: Calendar,
+      color: 'text-[#6D5AE6]',
+      bg: 'bg-[#F7F5FF]',
+    },
+    {
+      label: 'Pending Lab Reports',
+      value: pendingLabsCount.toString(),
+      subtext: 'Requires clinician review',
+      icon: Activity,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
     },
     {
       label: 'AI Scans Done',
-      value: aiScansCount > 0 ? aiScansCount.toString() : '23',
-      subtext: 'CNN Diagnostic Scans',
+      value: aiScansCount.toString(),
+      subtext: 'CNN Radiological Analyses',
       icon: Scan,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50 dark:bg-purple-950/50',
-    },
-    {
-      label: 'Braces Cases',
-      value: activeTreatmentsCount > 0 ? activeTreatmentsCount.toString() : '12',
-      subtext: 'Active treatment plans',
-      icon: Activity,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50 dark:bg-amber-950/50',
+      color: 'text-[#8B5CF6]',
+      bg: 'bg-[#F0ECFF]',
     },
   ];
 
   return (
-    <div className="space-y-6 text-left font-sans">
+    <div className="space-y-6 text-left font-sans bg-[#FFFFFF]">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 rounded-[20px] bg-gradient-to-r from-[#FFFFFF] via-[#F7F5FF] to-[#FFFFFF] border border-[#E9E5F5] shadow-[0_4px_20px_rgba(100,80,180,0.04)]">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            Good day, Dr. Santos 👋
+          <h2 className="text-2xl sm:text-3xl font-black text-[#263238] flex items-center gap-2">
+            Good morning, Dr. Santos 👋
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-            Clinical Operations & Live Performance Analytics —{' '}
-            <span className="font-bold text-slate-700 dark:text-slate-200">{todayFormatted}</span>
+          <p className="text-xs sm:text-sm font-semibold text-[#667085] mt-1">
+            Here's what's happening with your clinic today. — <span className="text-[#263238] font-bold">{todayFormatted}</span>
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-700 dark:text-emerald-300">
-          <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-          <span>Real-time Firestore Analytics Active</span>
+        <div className="flex items-center gap-2 bg-[#F0ECFF] border border-[#E9E5F5] px-4 py-2 rounded-full text-xs font-bold text-[#6D5AE6] shadow-xs">
+          <Sparkles className="h-4 w-4 text-[#8B5CF6]" />
+          <span>Real-time Clinical Analytics</span>
         </div>
       </div>
 
@@ -276,21 +347,21 @@ export default function DentistDashboard() {
           return (
             <div
               key={i}
-              className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-4"
+              className="bg-[#FFFFFF] border border-[#E9E5F5] rounded-[18px] p-6 shadow-[0_4px_20px_rgba(100,80,180,0.06)] hover:shadow-[0_8px_30px_rgba(139,92,246,0.1)] hover:border-[#A78BFA] transition-all flex items-center justify-between gap-4 group"
             >
               <div className="space-y-1">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                <p className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
                   {stat.label}
                 </p>
-                <p className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                <p className="text-3xl font-black tracking-tight text-[#263238] group-hover:text-[#8B5CF6] transition-colors">
                   {stat.value}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                <p className="text-xs text-[#667085] font-semibold">
                   {stat.subtext}
                 </p>
               </div>
               <div
-                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${stat.bg} ${stat.color}`}
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] border border-[#E9E5F5] ${stat.bg} ${stat.color} group-hover:scale-105 transition-transform`}
               >
                 <Icon className="h-6 w-6" />
               </div>
@@ -304,22 +375,24 @@ export default function DentistDashboard() {
         {/* Left Column: Interactive Analytics Suite */}
         <div className="lg:col-span-2 space-y-6">
           {/* Card 1: Interactive Monthly Visit Trend Chart */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+          <div className="bg-[#FFFFFF] border border-[#E9E5F5] rounded-[20px] p-6 shadow-[0_4px_20px_rgba(100,80,180,0.06)] space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#F0ECFF] border border-[#E9E5F5] text-[#8B5CF6]">
+                  <BarChart3 className="h-5 w-5" />
+                </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-base font-bold text-[#263238]">
                     Patient Visit Trend & Traffic
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-[#667085] font-semibold">
                     Clinical patient volume distribution
                   </p>
                 </div>
               </div>
 
               {/* Dynamic Range Selector Tabs */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <div className="flex items-center gap-1 bg-[#F7F5FF] p-1 rounded-xl border border-[#E9E5F5]">
                 {[
                   { id: '6m', label: '6 Months' },
                   { id: '30d', label: '30 Days' },
@@ -331,10 +404,10 @@ export default function DentistDashboard() {
                       setTimeRange(tab.id);
                       setHoveredPointIndex(null);
                     }}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       timeRange === tab.id
-                        ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-[#FFFFFF] text-[#6D5AE6] shadow-xs border border-[#E9E5F5]'
+                        : 'text-[#667085] hover:text-[#263238]'
                     }`}
                   >
                     {tab.label}
@@ -345,8 +418,8 @@ export default function DentistDashboard() {
 
             {/* Growth Pill Badge */}
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
-                <ArrowUpRight className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#F0ECFF] border border-[#E9E5F5] text-[#6D5AE6] text-xs font-bold">
+                <ArrowUpRight className="h-3.5 w-3.5 text-[#8B5CF6]" />
                 <span>{activeChart.growth}</span>
               </span>
               <span className="text-xs text-slate-400 font-medium">

@@ -50,11 +50,7 @@ export default function AdminUserManagement() {
     setLoading(true);
     try {
       if (!db) {
-        setUsersList([
-          { id: '1', FirstName: 'Maria', lastName: 'Santos', email: 'maria@example.com', role: 'patient', createdAt: '2026-08-01' },
-          { id: '2', FirstName: 'Dr. Ana', lastName: 'Santos', email: 'dr.ana@smileguard.ai', role: 'admin', createdAt: '2026-07-15' },
-          { id: '3', FirstName: 'Juan', lastName: 'dela Cruz', email: 'juan@example.com', role: 'patient', createdAt: '2026-08-03' },
-        ]);
+        setUsersList([]);
         setLoading(false);
         return;
       }
@@ -65,15 +61,7 @@ export default function AdminUserManagement() {
         fetched.push({ id: docSnap.id, ...docSnap.data() });
       });
 
-      // If empty in Firestore, fallback to sample view
-      if (fetched.length === 0) {
-        setUsersList([
-          { id: '1', FirstName: 'Maria', lastName: 'Santos', email: 'maria@example.com', role: 'patient', createdAt: '2026-08-01' },
-          { id: '2', FirstName: 'Dr. Ana', lastName: 'Santos', email: 'dr.ana@smileguard.ai', role: 'admin', createdAt: '2026-07-15' },
-        ]);
-      } else {
-        setUsersList(fetched);
-      }
+      setUsersList(fetched);
     } catch (err) {
       console.error('Error fetching Firestore users:', err);
     } finally {
@@ -174,20 +162,20 @@ export default function AdminUserManagement() {
   return (
     <div className="space-y-6 animate-fade-in text-left">
       {/* Top Banner & Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E9E5F5] pb-5">
         <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2.5">
-            <Users className="h-6 w-6 text-emerald-500" />
+          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
+            <Users className="h-6 w-6 text-purple-600" />
             Patient & Clinic User Directory
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Manage Cloud Firestore registered patient accounts, clinical staff roles, and HIPAA consent records.
           </p>
         </div>
 
         <button
           onClick={() => setIsAddPatientModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-95 shrink-0"
+          className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-200 flex items-center gap-2 transition-all active:scale-95 shrink-0"
         >
           <UserPlus className="h-4 w-4" />
           <span>Add New Patient</span>
@@ -196,8 +184,8 @@ export default function AdminUserManagement() {
 
       {/* Notification Toast */}
       {notification && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2.5 animate-bounce">
-          <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-bounce">
+          <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
           <span>{notification}</span>
         </div>
       )}
@@ -211,17 +199,17 @@ export default function AdminUserManagement() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by name or email..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-[#E9E5F5] text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Filter className="h-4 w-4 text-slate-400 shrink-0" />
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Filter Role:</span>
+          <span className="text-xs font-bold text-slate-500 shrink-0">Filter Role:</span>
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-white border border-[#E9E5F5] text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm cursor-pointer"
           >
             <option value="all">All Users ({usersList.length})</option>
             <option value="patient">Patients Only</option>

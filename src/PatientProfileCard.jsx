@@ -28,26 +28,26 @@ export default function PatientProfileCard() {
   const [isEditing, setIsEditing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Profile data from AuthContext or realistic default fallbacks
+  // Profile data from AuthContext or dynamic user properties
+  const defaultDisplayName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Patient';
   const fullName =
     userProfile?.fullName ||
     `${userProfile?.FirstName || ''} ${userProfile?.lastName || ''}`.trim() ||
-    currentUser?.displayName ||
-    'Maria Santos';
+    defaultDisplayName;
 
-  const email = userProfile?.email || currentUser?.email || 'maria.santos@email.com';
-  const phone = userProfile?.phone || '0917 123 4567';
-  const birthDate = userProfile?.birthDate || '1998-03-12';
-  const address = userProfile?.address || 'Quezon City, Metro Manila, Philippines';
-  const emergencyName = userProfile?.emergencyContactName || 'Juan Santos';
-  const emergencyPhone = userProfile?.emergencyContactPhone || '0918 987 6543';
-  const emergencyRelation = userProfile?.emergencyRelation || 'Spouse';
-  const medicalHistory = userProfile?.medicalHistory || 'Mild Controlled Hypertension • Routine Dental Checkup';
-  const allergies = userProfile?.allergies || 'Penicillin, Latex Sensitivity';
-  const hmoProvider = userProfile?.hmoProvider || 'Maxicare Healthcare Solutions';
-  const hmoMemberId = userProfile?.hmoMemberId || 'MX-9948201-P';
-  const primaryDentist = userProfile?.primaryDentist || 'Dr. Ana Santos';
-  const preferredComm = userProfile?.preferredComm || 'SMS & Email (English/Tagalog)';
+  const email = userProfile?.email || currentUser?.email || '';
+  const phone = userProfile?.phone || '';
+  const birthDate = userProfile?.birthDate || '';
+  const address = userProfile?.address || '';
+  const emergencyName = userProfile?.emergencyContactName || '';
+  const emergencyPhone = userProfile?.emergencyContactPhone || '';
+  const emergencyRelation = userProfile?.emergencyRelation || '';
+  const medicalHistory = userProfile?.medicalHistory || 'Routine Dental Checkup';
+  const allergies = userProfile?.allergies || 'None declared';
+  const hmoProvider = userProfile?.hmoProvider || 'N/A';
+  const hmoMemberId = userProfile?.hmoMemberId || 'N/A';
+  const primaryDentist = userProfile?.primaryDentist || 'SmileGuard Dental Specialist';
+  const preferredComm = userProfile?.preferredComm || 'Email & SMS';
 
   // Edit Form State
   const [formData, setFormData] = useState({
@@ -72,6 +72,21 @@ export default function PatientProfileCard() {
     .join('')
     .substring(0, 2)
     .toUpperCase();
+
+  const calculateAge = (dobString) => {
+    if (!dobString) return null;
+    const dob = new Date(dobString);
+    if (isNaN(dob.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : null;
+  };
+
+  const computedAge = calculateAge(birthDate);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -108,10 +123,10 @@ export default function PatientProfileCard() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 text-left font-sans">
       {/* Top Header Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="bg-white rounded-3xl border border-[#E9E5F5] p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-b border-slate-100 pb-6">
           <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-teal-100 bg-teal-600 text-2xl font-black text-white shadow-inner">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-4 border-purple-100 bg-purple-600 text-2xl font-black text-white shadow-md">
               {initials}
             </div>
             <div className="space-y-1">
@@ -124,13 +139,13 @@ export default function PatientProfileCard() {
               </div>
               <p className="text-xs font-semibold text-slate-500 flex items-center justify-center sm:justify-start gap-2">
                 <span>Patient ID:</span>
-                <code className="bg-slate-100 px-2 py-0.5 rounded text-slate-800 font-mono font-bold">
+                <code className="bg-purple-50 border border-purple-100 px-2 py-0.5 rounded text-purple-700 font-mono font-bold">
                   {currentUser?.uid ? `UID-${currentUser.uid.substring(0, 8).toUpperCase()}` : 'PATIENT-#10024'}
                 </code>
               </p>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs font-medium text-slate-600 pt-0.5">
-                <span className="flex items-center gap-1 text-teal-700 font-bold">
-                  <Stethoscope className="h-3.5 w-3.5 text-teal-600" />
+                <span className="flex items-center gap-1 text-purple-700 font-bold">
+                  <Stethoscope className="h-3.5 w-3.5 text-purple-600" />
                   {primaryDentist}
                 </span>
                 <span className="text-slate-300">•</span>
@@ -144,7 +159,7 @@ export default function PatientProfileCard() {
 
           <button
             onClick={() => setIsEditing(true)}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-200 transition-all flex items-center gap-2 shrink-0 cursor-pointer"
           >
             <Edit3 className="h-4 w-4" />
             <span>Edit Profile</span>
@@ -224,7 +239,9 @@ export default function PatientProfileCard() {
               <Calendar className="h-4 w-4 text-teal-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-[10px] font-bold uppercase text-slate-400">Date of Birth</p>
-                <p className="font-semibold text-slate-900">{birthDate} (28 yrs)</p>
+                <p className="font-semibold text-slate-900">
+                  {birthDate || 'Not specified'} {computedAge !== null ? `(${computedAge} yrs)` : ''}
+                </p>
               </div>
             </div>
 

@@ -60,29 +60,56 @@ def validate_image_format(filename: str, image_bytes: bytes):
         raise HTTPException(status_code=400, detail=f"Failed to inspect image dimensions: {str(e)}")
 
     # 4. Radiological X-ray Modality Validation
-    # Decode BGR image to analyze color variance and saturation
+    # Decode BGR image to analyze color variance, saturation, and radiographic distribution
     nparr = np.frombuffer(image_bytes, np.uint8)
     bgr_img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
     if bgr_img is not None:
         hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
-        saturation = hsv[:, :, 1]
-        mean_sat = np.mean(saturation)
+        saturation = hsv[:, :, 1].astype(np.float32)
+        mean_sat = float(np.mean(saturation))
 
         b, g, r = cv2.split(bgr_img)
-        diff_rg = np.mean(np.abs(r.astype(np.int16) - g.astype(np.int16)))
-        diff_gb = np.mean(np.abs(g.astype(np.int16) - b.astype(np.int16)))
-        diff_br = np.mean(np.abs(b.astype(np.int16) - r.astype(np.int16)))
+        diff_rg = np.abs(r.astype(np.float32) - g.astype(np.float32))
+        diff_gb = np.abs(g.astype(np.float32) - b.astype(np.float32))
+        diff_br = np.abs(b.astype(np.float32) - r.astype(np.float32))
         chroma_diff = (diff_rg + diff_gb + diff_br) / 3.0
+        mean_chroma_diff = float(np.mean(chroma_diff))
 
-        # Intraoral photos / selfies / color pictures have high saturation and high RGB channel difference
-        if mean_sat > 35.0 or chroma_diff > 18.0:
+        # Check percentage of pixels showing color saturation
+        colored_pixel_ratio = float(np.mean((saturation > 25.0) & (chroma_diff > 10.0)))
+
+        # Intraoral photos, selfies, color photos, and general photos have chromaticity
+        # Whereas dental X-rays (Panoramic, Bitewing, Periapical) are monochromatic radiographs
+        if mean_sat > 10.0 or mean_chroma_diff > 7.0 or colored_pixel_ratio > 0.03:
+            # Diagnose specific type for user feedback
+            is_oral_tone = np.mean(r > (g + 15)) > 0.12
+            detected_label = "Intraoral photo" if is_oral_tone else "Selfie / Color photo / General photo"
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "Unsupported image modality: SmileGuard AI accepts dental X-ray images only "
-                    "(panoramic, bitewing, or periapical X-rays). Intraoral photographs, selfies, "
-                    "or general photographs are not supported."
+                    f"Unsupported image modality ({detected_label} detected): "
+                    "SmileGuard AI accepts dental X-ray images only (Panoramic X-ray, Bitewing X-ray, or Periapical X-ray). "
+                    "Not Supported: Intraoral photos, Selfies / Color photos, General photos."
+                )
+            )
+
+        # Grayscale validation: reject blank images or binarized text documents
+        gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
+        std_lum = float(np.std(gray))
+        if std_lum < 10.0:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported image: Blank or uniform image detected. Please upload a clear dental radiograph."
+            )
+
+        extreme_ratio = float(np.mean((gray < 15) | (gray > 240)))
+        if extreme_ratio > 0.78:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Unsupported image: Document or diagram detected. "
+                    "SmileGuard AI accepts dental X-ray images only (Panoramic, Bitewing, or Periapical X-rays)."
                 )
             )
 

@@ -6,7 +6,7 @@ import LoginForm from './LoginForm';
  * Top-level Patient Portal Login Page component for SmileGuard AI.
  * Handles system dark mode syncing, state management, and authentication redirects.
  */
-export default function PatientLoginPage({ onAuthenticated, onCancel }) {
+export default function PatientLoginPage({ onAuthenticated, onCancel, onSwitchToAdmin }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Sync dark mode class on <html>
@@ -49,8 +49,9 @@ export default function PatientLoginPage({ onAuthenticated, onCancel }) {
       isDarkMode={isDarkMode}
       onToggleDarkMode={toggleDarkMode}
       onBackToLanding={onCancel}
+      onSwitchToAdmin={onSwitchToAdmin}
     >
-      <LoginForm onSuccess={handleLoginSuccess} />
+      <LoginForm onSuccess={handleLoginSuccess} onSwitchToAdmin={onSwitchToAdmin} />
     </AuthLayout>
   );
 }

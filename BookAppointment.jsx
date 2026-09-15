@@ -131,25 +131,25 @@ export default function BookAppointment() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="max-w-2xl mx-auto bg-white border border-[#E9E5F5] rounded-2xl shadow-xl shadow-purple-900/5 overflow-hidden">
             {/* Step Wizard Header */}
-            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div className="bg-[#F7F5FF] border-b border-[#E9E5F5] px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-6 w-full max-w-md mx-auto">
                     {[1, 2, 3].map((num, i) => (
                         <React.Fragment key={num}>
                             <div className="flex items-center gap-2">
                                 <div
                                     className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                                        step >= num ? 'bg-[#008B8B] text-white shadow' : 'bg-slate-200 text-slate-500'
+                                        step >= num ? 'bg-purple-600 text-white shadow-md shadow-purple-200' : 'bg-slate-200 text-slate-500'
                                     }`}
                                 >
                                     {num}
                                 </div>
-                                <span className={`text-xs font-semibold ${step >= num ? 'text-slate-800' : 'text-slate-400'}`}>
+                                <span className={`text-xs font-semibold ${step >= num ? 'text-purple-900' : 'text-slate-400'}`}>
                                     {num === 1 ? 'Service' : num === 2 ? 'Schedule' : 'Confirm'}
                                 </span>
                             </div>
-                            {i < 2 && <div className={`flex-1 h-0.5 transition-all ${step > num ? 'bg-[#008B8B]' : 'bg-slate-200'}`} />}
+                            {i < 2 && <div className={`flex-1 h-0.5 transition-all ${step > num ? 'bg-purple-600' : 'bg-slate-200'}`} />}
                         </React.Fragment>
                     ))}
                 </div>
@@ -172,10 +172,10 @@ export default function BookAppointment() {
                             {services.map((srv) => (
                                 <label
                                     key={srv.id}
-                                    className={`border rounded-xl p-4 flex items-start gap-4 cursor-pointer transition-all hover:bg-slate-50/50 ${
+                                    className={`border rounded-xl p-4 flex items-start gap-4 cursor-pointer transition-all hover:bg-purple-50/30 ${
                                         formData.service === srv.name
-                                            ? 'border-[#008B8B] bg-emerald-50/30 ring-2 ring-[#008B8B]/20'
-                                            : 'border-slate-200'
+                                            ? 'border-purple-600 bg-purple-50/50 ring-2 ring-purple-600/20'
+                                            : 'border-[#E9E5F5]'
                                     }`}
                                 >
                                     <input
@@ -184,12 +184,12 @@ export default function BookAppointment() {
                                         value={srv.name}
                                         checked={formData.service === srv.name}
                                         onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-                                        className="mt-1 accent-[#008B8B]"
+                                        className="mt-1 accent-purple-600"
                                     />
                                     <div className="flex-1">
                                         <div className="flex items-center justify-between gap-2">
                                             <h4 className="text-sm font-bold text-slate-900">{srv.name}</h4>
-                                            <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">
+                                            <span className="text-xs text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100">
                                                 {srv.duration}
                                             </span>
                                         </div>
@@ -218,7 +218,7 @@ export default function BookAppointment() {
                                     min={new Date().toISOString().split('T')[0]}
                                     value={formData.date}
                                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium focus:outline-none focus:border-[#008B8B]"
+                                    className="w-full bg-white border border-[#E9E5F5] rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-200"
                                 />
                             </div>
                         </div>
@@ -233,8 +233,8 @@ export default function BookAppointment() {
                                         onClick={() => setFormData({ ...formData, time })}
                                         className={`py-2.5 px-3 border text-xs font-bold rounded-xl text-center transition-all ${
                                             formData.time === time
-                                                ? 'bg-[#008B8B] text-white border-[#008B8B] shadow-sm'
-                                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                                ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-200'
+                                                : 'bg-white text-slate-600 border-[#E9E5F5] hover:border-purple-300'
                                         }`}
                                     >
                                         {time}
@@ -252,18 +252,18 @@ export default function BookAppointment() {
                             <p className="text-xs text-slate-500">Verify your appointment details before submitting.</p>
                         </div>
 
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
-                            <div className="flex justify-between border-b border-slate-200/60 pb-2">
+                        <div className="bg-[#F7F5FF] border border-[#E9E5F5] rounded-xl p-4 space-y-3 text-xs">
+                            <div className="flex justify-between border-b border-purple-100/60 pb-2">
                                 <span className="text-slate-500 font-medium">Patient Name</span>
                                 <span className="font-bold text-slate-800">
                                     {userProfile?.fullName || currentUser?.displayName || currentUser?.email || 'Patient'}
                                 </span>
                             </div>
-                            <div className="flex justify-between border-b border-slate-200/60 pb-2">
+                            <div className="flex justify-between border-b border-purple-100/60 pb-2">
                                 <span className="text-slate-500 font-medium">Selected Service</span>
-                                <span className="font-bold text-slate-800">{formData.service}</span>
+                                <span className="font-bold text-purple-700">{formData.service}</span>
                             </div>
-                            <div className="flex justify-between border-b border-slate-200/60 pb-2">
+                            <div className="flex justify-between border-b border-purple-100/60 pb-2">
                                 <span className="text-slate-500 font-medium">Target Date</span>
                                 <span className="font-bold text-slate-800">{formData.date || 'Not selected'}</span>
                             </div>
@@ -273,8 +273,8 @@ export default function BookAppointment() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 text-xs text-slate-600 bg-emerald-50/50 border border-emerald-200 p-3 rounded-xl">
-                            <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <div className="flex items-center gap-2 text-xs text-purple-900 bg-purple-50 border border-purple-200 p-3 rounded-xl">
+                            <ShieldCheck className="h-4 w-4 text-purple-600 shrink-0" />
                             <span>This booking will sync in real-time with Cloud Firestore.</span>
                         </div>
                     </div>
@@ -285,7 +285,7 @@ export default function BookAppointment() {
                     <button
                         type="button"
                         onClick={handleBack}
-                        className={`flex items-center gap-1 text-xs font-bold px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors ${
+                        className={`flex items-center gap-1 text-xs font-bold px-4 py-2 border border-[#E9E5F5] rounded-xl text-slate-600 hover:bg-slate-50 transition-colors ${
                             step === 1 ? 'invisible' : ''
                         }`}
                     >
@@ -304,7 +304,7 @@ export default function BookAppointment() {
                                 setErrorMsg('');
                                 handleNext();
                             }}
-                            className="flex items-center gap-1.5 px-5 py-2.5 bg-[#008B8B] hover:bg-[#007A7A] text-white font-bold text-xs rounded-xl shadow transition-colors ml-auto"
+                            className="flex items-center gap-1.5 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-200 transition-colors ml-auto"
                         >
                             <span>Next Step</span>
                             <ChevronRight className="h-4 w-4" />
@@ -313,7 +313,7 @@ export default function BookAppointment() {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#008B8B] to-emerald-600 hover:from-[#007A7A] hover:to-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all ml-auto disabled:opacity-60"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-200 transition-all ml-auto disabled:opacity-60"
                         >
                             {isSubmitting ? (
                                 <>
