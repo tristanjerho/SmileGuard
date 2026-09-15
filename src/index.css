@@ -106,50 +106,88 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Global Brand Dark Theme Override Rules */
-.dark .bg-\[\#FFFFFF\] {
-  background-color: #0D0A1A !important;
+/* Global Brand Ambient Dark Theme Rules */
+.dark body {
+  background-color: #0F1420 !important;
+  background-image: 
+    radial-gradient(circle at 50% 10%, rgba(47, 60, 85, 0.5) 0%, transparent 60%),
+    radial-gradient(circle at 90% 80%, rgba(26, 35, 58, 0.6) 0%, transparent 50%),
+    linear-gradient(135deg, #0D1220 0%, #161F38 50%, #261E4E 100%) !important;
+  background-attachment: fixed;
+  color: #f8fafc;
 }
-.dark .bg-\[\#FFFFFF\]\/90 {
-  background-color: rgba(13, 10, 26, 0.9) !important;
+
+/* Crisp White Card Legibility Utilities */
+.card-white {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
 }
-.dark .bg-\[\#F7F5FF\] {
-  background-color: #15102A !important;
+
+/* Form Input High Contrast Defaults */
+input, select, textarea {
+  color: #0f172a;
 }
-.dark .bg-\[\#F7F5FF\]\/50 {
-  background-color: rgba(21, 16, 42, 0.6) !important;
+
+/* Custom Tooth Mascot Keyframe Animations */
+@keyframes toothFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.5deg);
+  }
 }
-.dark .bg-\[\#F0ECFF\] {
-  background-color: #231B45 !important;
+
+@keyframes toothWave {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(18deg);
+  }
+  75% {
+    transform: rotate(-8deg);
+  }
 }
-.dark .border-\[\#E9E5F5\] {
-  border-color: #2C2256 !important;
+
+@keyframes eyeBlink {
+  0%, 90%, 100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
 }
-.dark .text-\[\#263238\] {
-  color: #F5F3FF !important;
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
-.dark .text-\[\#667085\] {
-  color: #A79BCE !important;
+
+.animate-tooth-float {
+  animation: toothFloat 3.5s ease-in-out infinite;
 }
-.dark .text-\[\#6D5AE6\] {
-  color: #A78BFA !important;
+
+.animate-tooth-wave {
+  animation: toothWave 2.5s ease-in-out infinite;
 }
-.dark .hover\:bg-\[\#F7F5FF\]:hover {
-  background-color: #1E163B !important;
+
+.animate-eye-blink {
+  animation: eyeBlink 4.5s infinite;
+  transform-origin: center;
 }
-.dark .hover\:bg-\[\#F0ECFF\]:hover {
-  background-color: #2D235B !important;
+
+.animate-spin-slow {
+  animation: spinSlow 12s linear infinite;
 }
-.dark input, 
-.dark select, 
-.dark textarea {
-  background-color: #1A1435 !important;
-  color: #F5F3FF !important;
-  border-color: #2C2256 !important;
-}
-.dark input::placeholder, 
-.dark textarea::placeholder {
-  color: #8C7DAE !important;
-}
+
+
+
 
 

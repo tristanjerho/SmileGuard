@@ -4,6 +4,7 @@ import { db } from './firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from './context/AuthContext';
 import Spinner from './components/auth/Spinner';
+import MascotLoader from './components/common/MascotLoader';
 
 export default function PatientNotifications() {
   const { currentUser } = useAuth();
@@ -21,31 +22,19 @@ export default function PatientNotifications() {
       where('userId', '==', currentUser.uid)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = [];
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        const isSeededMock =
-          data.title === 'Upcoming Appointment Reminder' ||
-          data.title === 'AI Scan Result Released' ||
-          data.title === 'Welcome to SmileGuard AI';
-
-        if (isSeededMock) {
-          deleteDoc(doc(db, 'notifications', docSnap.id)).catch((e) =>
-            console.warn('Auto-cleanup seeded notification error:', e)
-          );
-        } else {
-          fetched.push({ id: docSnap.id, ...data });
-        }
-      });
-
-      fetched.sort((a, b) => (b.unread ? 1 : 0) - (a.unread ? 1 : 0));
-      setNotifications(fetched);
-      setLoading(false);
-    }, (err) => {
-      console.error('Error fetching notifications:', err);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        items.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        setNotifications(items);
+        setLoading(false);
+      },
+      (err) => {
+        console.warn('Notifications snapshot error:', err);
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [currentUser]);
@@ -57,11 +46,11 @@ export default function PatientNotifications() {
         await updateDoc(notifRef, { unread: false, read: true });
       }
     } catch (err) {
-      console.error('Error marking notification as read:', err);
+      console.error('Error marking read:', err);
     }
   };
 
-  const handleMarkAllRead = async () => {
+  const handleMarkAllAsRead = async () => {
     try {
       if (db) {
         const unreadItems = notifications.filter((n) => n.unread);
@@ -76,12 +65,7 @@ export default function PatientNotifications() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white border border-slate-200 rounded-2xl shadow-sm text-slate-500 gap-3">
-        <Spinner size="md" className="text-teal-600" />
-        <span className="text-xs font-semibold">Loading real-time notifications...</span>
-      </div>
-    );
+    return <MascotLoader message="Loading notifications..." fullScreen={false} size="md" />;
   }
 
   const unreadCount = notifications.filter((n) => n.unread).length;

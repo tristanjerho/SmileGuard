@@ -4,7 +4,7 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration read from environment variables with fallbacks
+// Your web app's Firebase configuration read from environment variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDnocqTUSuBEpJdv-3tGT-WxLKc4kcy62c",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "smile-guard-ai.firebaseapp.com",

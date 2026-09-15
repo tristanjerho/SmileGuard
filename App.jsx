@@ -31,28 +31,63 @@ import { syncUserWithFirestore } from './src/services/userService';
 import Spinner from './src/components/auth/Spinner';
 import PWAStatus from './src/components/PWAStatus';
 
+import MascotLoader from './src/components/common/MascotLoader';
+
 function AppContent() {
 
     const { currentUser, userProfile, loading, onboardingCompleted, isAdmin, logout, refreshProfile } = useAuth();
     const [isSessionAuthenticated, setIsSessionAuthenticated] = useState(false);
     const [userType, setUserType] = useState('landing');
     const [activeTab, setActiveTab] = useState('My Profile');
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isSigningIn, setIsSigningIn] = useState(false);
+    const [signInMessage, setSignInMessage] = useState('Signing in to SmileGuard AI...');
 
     const handleLogout = async () => {
-        await logout();
-        setIsSessionAuthenticated(false);
-        setUserType('landing');
+        setIsLoggingOut(true);
+        try {
+            await logout();
+        } finally {
+            setTimeout(() => {
+                setIsSessionAuthenticated(false);
+                setUserType('landing');
+                setIsLoggingOut(false);
+            }, 2500);
+        }
+    };
+
+    const handleAdminAuthenticated = () => {
+        setSignInMessage('Signing in to Clinician Workspace...');
+        setIsSigningIn(true);
+        setTimeout(() => {
+            setIsSessionAuthenticated(true);
+            setUserType('admin');
+            setActiveTab('Dashboard');
+            setIsSigningIn(false);
+        }, 2500);
+    };
+
+    const handlePatientAuthenticated = () => {
+        setSignInMessage('Signing in to Patient Portal...');
+        setIsSigningIn(true);
+        setTimeout(() => {
+            setIsSessionAuthenticated(true);
+            setUserType('patient');
+            setActiveTab('My Profile');
+            setIsSigningIn(false);
+        }, 2500);
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen w-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-4">
-                <Spinner size="lg" className="text-teal-400" />
-                <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-                    Initializing SmileGuard AI Workspace...
-                </p>
-            </div>
-        );
+        return <MascotLoader message="Initializing SmileGuard AI Workspace..." />;
+    }
+
+    if (isLoggingOut) {
+        return <MascotLoader message="Signing out safely..." />;
+    }
+
+    if (isSigningIn) {
+        return <MascotLoader message={signInMessage} />;
     }
 
     // REQUIRE PORTAL SELECTION / LOGIN FIRST ON EVERY VISIT:
@@ -61,11 +96,7 @@ function AppContent() {
         if (userType === 'admin_login') {
             return (
                 <AdminLoginPage
-                    onAdminAuthenticated={() => {
-                        setIsSessionAuthenticated(true);
-                        setUserType('admin');
-                        setActiveTab('Dashboard');
-                    }}
+                    onAdminAuthenticated={handleAdminAuthenticated}
                     onSwitchToPatientPortal={() => setUserType('patient_login')}
                 />
             );
@@ -74,11 +105,7 @@ function AppContent() {
         if (userType === 'patient_login') {
             return (
                 <PatientLoginPage
-                    onAuthenticated={() => {
-                        setIsSessionAuthenticated(true);
-                        setUserType('patient');
-                        setActiveTab('My Profile');
-                    }}
+                    onAuthenticated={handlePatientAuthenticated}
                     onCancel={() => setUserType('landing')}
                     onSwitchToAdmin={() => setUserType('admin_login')}
                 />

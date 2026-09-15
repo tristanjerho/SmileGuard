@@ -4,6 +4,9 @@ import App from '../App';
 import './index.css';
 import './firebase';
 
+// Permanent Dark Mode Theme Enforcement
+document.documentElement.classList.add('dark');
+localStorage.setItem('smileguard_theme', 'dark');
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

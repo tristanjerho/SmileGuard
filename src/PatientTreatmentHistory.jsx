@@ -4,6 +4,7 @@ import { db } from './firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from './context/AuthContext';
 import Spinner from './components/auth/Spinner';
+import MascotLoader from './components/common/MascotLoader';
 
 export default function PatientTreatmentHistory() {
   const { currentUser } = useAuth();
@@ -60,12 +61,7 @@ export default function PatientTreatmentHistory() {
   const progressPercent = totalStages > 0 ? Math.min(Math.round((completedStages / totalStages) * 100), 100) : 0;
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 bg-[#FFFFFF] border border-[#E9E5F5] rounded-[20px] shadow-xs text-[#667085] gap-3">
-        <Spinner size="md" className="text-[#8B5CF6]" />
-        <span className="text-xs font-semibold">Loading treatment history from Firestore...</span>
-      </div>
-    );
+    return <MascotLoader message="Loading treatment history..." fullScreen={false} size="md" />;
   }
 
   return (
