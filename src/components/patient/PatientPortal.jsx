@@ -252,8 +252,8 @@ export default function PatientPortal({ patientUser, userProfile, onLogout, onSw
             {renderContent()}
           </main>
 
-          {/* Mobile Bottom Navigation Bar (< 768px touch-friendly) */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-[#E9E5F5] dark:border-slate-800 flex items-center justify-around px-2 z-40 shadow-lg">
+          {/* Mobile Bottom Navigation Bar (< 768px touch-friendly PWA) */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-[#E9E5F5] dark:border-slate-800 flex items-center justify-around px-2 z-40 shadow-lg pb-safe">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.name;

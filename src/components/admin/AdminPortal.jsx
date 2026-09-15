@@ -243,7 +243,29 @@ export default function AdminPortal({ adminUser, onLogout }) {
           </header>
 
           {/* Dynamic Tab Body */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-transparent">{renderContent()}</main>
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-transparent pb-20 md:pb-8">
+            {renderContent()}
+          </main>
+
+          {/* Mobile Bottom Navigation Bar (< 768px touch-friendly PWA) */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-[#E9E5F5] dark:border-slate-800 flex items-center justify-around px-2 z-40 shadow-lg pb-safe">
+            {navItems.slice(0, 5).map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.name;
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => setActiveTab(item.name)}
+                  className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+                    isActive ? 'text-[#6D5AE6] dark:text-indigo-300 bg-[#F0ECFF] dark:bg-indigo-600/20 font-bold' : 'text-[#667085] dark:text-slate-400'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 ${isActive ? 'text-[#8B5CF6] dark:text-indigo-400' : 'text-[#667085] dark:text-slate-400'}`} />
+                  <span className="text-[9px] truncate max-w-[56px]">{item.name.split(' ')[0]}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </PurpleWaveBackground>
