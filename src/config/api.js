@@ -3,12 +3,16 @@
 
 const getDynamicApiUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && envUrl !== 'http://localhost:8000' && envUrl !== 'http://127.0.0.1:8000') {
-    return envUrl;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
   }
 
   if (typeof window !== 'undefined' && window.location) {
     const hostname = window.location.hostname;
+    // On Vercel or public HTTPS domains, default to same-origin relative path unless VITE_API_URL is provided
+    if (hostname.endsWith('.vercel.app') || hostname.endsWith('.now.sh')) {
+      return '';
+    }
     if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
       return `http://${hostname}:8000`;
     }
@@ -16,6 +20,7 @@ const getDynamicApiUrl = () => {
 
   return 'http://localhost:8000';
 };
+
 
 export const API_BASE_URL = getDynamicApiUrl();
 
