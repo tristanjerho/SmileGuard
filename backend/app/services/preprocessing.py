@@ -1,10 +1,30 @@
+import sys
+import os
 import io
 import cv2
 import numpy as np
 from PIL import Image
-from fastapi import HTTPException
-from tensorflow.keras.applications.efficientnet import preprocess_input
-from config import IMAGE_SIZE
+from fastapi import HTTPException  # type: ignore # pyright: ignore [reportMissingImports]
+
+# Ensure backend root directory is in sys.path for relative/module imports
+_backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
+# pyrefly: ignore [missing-import]
+# pyright: ignore [reportMissingImports]
+# type: ignore
+try:
+    from tensorflow.keras.applications.efficientnet import preprocess_input
+except Exception:
+    import tensorflow as tf  # type: ignore # pyright: ignore
+    preprocess_input = tf.keras.applications.efficientnet.preprocess_input
+
+try:
+    from config import IMAGE_SIZE  # type: ignore # pyright: ignore [reportMissingImports]
+except ImportError:
+    from ...config import IMAGE_SIZE  # type: ignore # pyright: ignore [reportMissingImports]
+
 
 SUPPORTED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp', 'bmp'}
 MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB

@@ -14,7 +14,8 @@ export default function AuthLayout({ children, isDarkMode, onToggleDarkMode, onB
 
   return (
     <PurpleWaveBackground>
-      <div className="min-h-screen w-screen flex flex-col font-sans relative">
+      <div className="min-h-screen min-h-[100dvh] w-full max-w-full flex flex-col font-sans relative overflow-y-auto">
+
         {/* Top Floating Bar */}
         <header className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between pointer-events-none">
           <div className="flex items-center gap-2">

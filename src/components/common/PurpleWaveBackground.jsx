@@ -7,7 +7,8 @@ import React from 'react';
  */
 export default function PurpleWaveBackground({ children, className = '' }) {
   return (
-    <div className={`relative min-h-screen w-full bg-[#0F1420] text-slate-100 overflow-hidden ${className}`}>
+    <div className={`relative min-h-screen min-h-[100dvh] w-full max-w-full bg-[#0F1420] text-slate-100 overflow-x-hidden ${className}`}>
+
       {/* Sleek Dark Slate & Soft Lavender-Midnight Gradient Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0D1220] via-[#161F38] to-[#261E4E] z-0" />
 

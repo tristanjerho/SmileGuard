@@ -97,7 +97,8 @@ export default function PWAStatus() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-[calc(100vw-2rem)] sm:w-auto pointer-events-none">
+    <div className="fixed bottom-20 md:bottom-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-[calc(100vw-2rem)] sm:w-auto pointer-events-none">
+
       
       {/* 1. Offline Alert Toast */}
       {!isOnline && (

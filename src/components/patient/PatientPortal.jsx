@@ -93,7 +93,8 @@ export default function PatientPortal({ patientUser, userProfile, onLogout, onSw
 
   return (
     <PurpleWaveBackground>
-      <div className="flex h-screen h-[100dvh] w-screen overflow-hidden font-sans relative">
+      <div className="flex h-screen h-[100dvh] w-full max-w-full overflow-hidden font-sans relative">
+
         {/* Mobile Menu Drawer Overlay */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-50 flex md:hidden">
@@ -248,9 +249,13 @@ export default function PatientPortal({ patientUser, userProfile, onLogout, onSw
           </header>
 
           {/* Dynamic Tab Body */}
-          <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-transparent pb-24 md:pb-8 touch-pan-y">
+          <main
+            className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-transparent pb-28 md:pb-8 overscroll-contain touch-pan-y"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             {renderContent()}
           </main>
+
 
           {/* Mobile Bottom Navigation Bar (< 768px touch-friendly PWA) */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-[#E9E5F5] dark:border-slate-800 flex items-center justify-around px-2 z-40 shadow-lg pb-safe">

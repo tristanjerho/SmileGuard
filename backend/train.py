@@ -4,12 +4,17 @@ import json
 import argparse
 import numpy as np
 import tensorflow as tf
+# pyrefly: ignore [missing-import]
 import matplotlib.pyplot as plt
 from PIL import Image
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from tensorflow.keras.applications import EfficientNetB0
+# pyrefly: ignore [missing-import]
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout, Input, RandomFlip, RandomRotation, RandomZoom, RandomTranslation, RandomContrast
+# pyrefly: ignore [missing-import]
 from tensorflow.keras.models import Model
+# pyrefly: ignore [missing-import]
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support, accuracy_score
 
