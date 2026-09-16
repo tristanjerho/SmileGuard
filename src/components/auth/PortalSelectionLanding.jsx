@@ -11,7 +11,8 @@ import PurpleWaveBackground from '../common/PurpleWaveBackground';
 export default function PortalSelectionLanding({ onSelectDentistPortal, onSelectPatientPortal }) {
   return (
     <PurpleWaveBackground>
-      <div className="min-h-screen min-h-[100dvh] w-full max-w-full flex flex-col justify-between p-4 sm:p-8 lg:p-10 font-sans relative overflow-y-auto">
+      <div className="w-full max-w-7xl mx-auto min-h-screen min-h-[100dvh] flex flex-col justify-between p-4 sm:p-8 lg:p-10 font-sans relative z-10">
+
 
         {/* Top Header Bar */}
         <header className="w-full max-w-7xl mx-auto flex items-center justify-between z-10">
