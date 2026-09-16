@@ -12,13 +12,13 @@ export default function SocialLogin({ onGoogleSignIn, isLoading = false, disable
       disabled={disabled || isLoading}
       aria-label="Sign in with Google"
       className={`
-        w-full py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700
-        bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200
-        hover:bg-slate-50 dark:hover:bg-slate-800/80 hover:border-slate-300 dark:hover:border-slate-600
+        w-full py-3 px-4 rounded-xl border border-slate-700/70
+        bg-slate-800/60 text-slate-200
+        hover:bg-slate-700/60 hover:border-slate-600
         font-semibold text-xs sm:text-sm transition-all duration-200 shadow-sm
         flex items-center justify-center gap-3 active:scale-[0.98]
-        focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1
-        ${disabled || isLoading ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''}
+        focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-0
+        ${disabled || isLoading ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
       `}
     >
       {isLoading ? (

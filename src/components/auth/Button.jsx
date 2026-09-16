@@ -3,6 +3,7 @@ import Spinner from './Spinner';
 
 /**
  * Custom Button Component with Micro-ripple effect, loading state, and WCAG compliance.
+ * Unified purple accent theme matching the SmileGuard AI design system.
  */
 export default function Button({
   children,
@@ -45,21 +46,21 @@ export default function Button({
   };
 
   const baseStyles =
-    'relative overflow-hidden font-bold rounded-xl text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 flex items-center justify-center gap-2.5 active:scale-[0.98] select-none';
+    'relative overflow-hidden font-bold rounded-xl text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 flex items-center justify-center gap-2.5 active:scale-[0.98] select-none';
 
   const variants = {
     primary:
-      'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 focus:ring-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500',
+      'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-600/30 focus:ring-purple-500',
     secondary:
-      'bg-teal-500 hover:bg-teal-600 text-white shadow-lg shadow-teal-500/20 focus:ring-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500',
+      'bg-teal-500 hover:bg-teal-600 text-white shadow-lg shadow-teal-500/20 focus:ring-teal-400',
     outline:
-      'bg-transparent border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:ring-slate-400',
+      'bg-transparent border border-slate-600 text-slate-200 hover:bg-slate-800/80 hover:border-slate-500 focus:ring-slate-500',
     ghost:
-      'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 focus:ring-slate-400',
+      'bg-transparent text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 focus:ring-slate-500',
   };
 
   const disabledStyles =
-    'opacity-60 cursor-not-allowed pointer-events-none shadow-none transform-none';
+    'opacity-50 cursor-not-allowed pointer-events-none shadow-none transform-none';
 
   return (
     <button
@@ -80,7 +81,7 @@ export default function Button({
       {ripples.map((r) => (
         <span
           key={r.id}
-          className="absolute bg-white/30 rounded-full animate-ping pointer-events-none"
+          className="absolute bg-white/20 rounded-full animate-ping pointer-events-none"
           style={{
             left: r.x,
             top: r.y,

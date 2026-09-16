@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, Clock, Calendar, User, Phone, Mail } from 'lucide-react';
 import { db } from './src/firebase';
-import { collection, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import Spinner from './src/components/auth/Spinner';
 
 export default function AppointmentsQueue() {
@@ -33,11 +33,28 @@ export default function AppointmentsQueue() {
         return () => unsubscribe();
     }, []);
 
-    const updateStatus = async (id, newStatus) => {
+    const updateStatus = async (app, newStatus) => {
         try {
             if (db) {
-                const apptRef = doc(db, 'appointments', id);
-                await updateDoc(apptRef, { status: newStatus });
+                const apptRef = doc(db, 'appointments', app.id);
+                await updateDoc(apptRef, { status: newStatus, updatedAt: serverTimestamp() });
+
+                if (app.userId) {
+                    const isAccepted = newStatus === 'Confirmed' || newStatus === 'Accepted';
+                    const title = isAccepted ? 'Appointment Confirmed! ✅' : `Appointment ${newStatus}`;
+                    const body = isAccepted
+                        ? `Great news! Your reservation for ${app.service || 'dental service'} on ${app.date || ''} at ${app.time || ''} has been accepted by the admin.`
+                        : `Your appointment request for ${app.service || 'dental service'} status was updated to ${newStatus}.`;
+
+                    await addDoc(collection(db, 'notifications'), {
+                        userId: app.userId,
+                        type: 'appointment',
+                        title: title,
+                        body: body,
+                        unread: true,
+                        createdAt: serverTimestamp(),
+                    });
+                }
             }
         } catch (err) {
             console.error('Error updating appointment status:', err);
@@ -153,7 +170,7 @@ export default function AppointmentsQueue() {
                                         <div className="flex items-center justify-end gap-2">
                                             {app.status !== 'Confirmed' && (
                                                 <button
-                                                    onClick={() => updateStatus(app.id, 'Confirmed')}
+                                                    onClick={() => updateStatus(app, 'Confirmed')}
                                                     className="px-3 py-1.5 rounded-[9px] bg-[#10B981] hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all"
                                                 >
                                                     <Check className="h-3.5 w-3.5" />
@@ -162,7 +179,7 @@ export default function AppointmentsQueue() {
                                             )}
                                             {app.status !== 'Rejected' && app.status !== 'Cancelled' && (
                                                 <button
-                                                    onClick={() => updateStatus(app.id, 'Rejected')}
+                                                    onClick={() => updateStatus(app, 'Rejected')}
                                                     className="px-3 py-1.5 rounded-[9px] border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1 transition-all"
                                                 >
                                                     <X className="h-3.5 w-3.5" />

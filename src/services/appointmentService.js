@@ -53,7 +53,24 @@ export const subscribeAllAppointments = (callback) => {
   });
 };
 
-export const updateAppointmentStatus = async (appointmentId, status) => {
+export const updateAppointmentStatus = async (appointmentId, status, appointmentData = null) => {
   const docRef = doc(db, 'appointments', appointmentId);
-  return await updateDoc(docRef, { status, updatedAt: serverTimestamp() });
+  await updateDoc(docRef, { status, updatedAt: serverTimestamp() });
+
+  if (appointmentData?.userId) {
+    const isAccepted = status === 'Confirmed' || status === 'Accepted';
+    const title = isAccepted ? 'Appointment Confirmed! ✅' : `Appointment ${status}`;
+    const body = isAccepted
+      ? `Your appointment for ${appointmentData.service || 'dental service'} on ${appointmentData.date || ''} at ${appointmentData.time || ''} has been accepted by the clinic.`
+      : `Your appointment request for ${appointmentData.service || 'dental service'} status was updated to: ${status}.`;
+
+    await addDoc(collection(db, 'notifications'), {
+      userId: appointmentData.userId,
+      type: 'appointment',
+      title: title,
+      body: body,
+      unread: true,
+      createdAt: serverTimestamp(),
+    });
+  }
 };

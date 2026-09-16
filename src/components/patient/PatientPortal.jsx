@@ -52,11 +52,11 @@ export default function PatientPortal({ patientUser, userProfile, onLogout, onSw
   };
 
   const navItems = [
-    { name: 'My Profile', icon: UserCircle },
-    { name: 'Book Appointment', icon: PlusCircle },
-    { name: 'My Appointments', icon: Clock },
-    { name: 'Treatment History', icon: HeartPulse },
-    { name: 'Notifications', icon: Bell },
+    { name: 'My Profile', icon: UserCircle, shortName: 'Profile' },
+    { name: 'Book Appointment', icon: PlusCircle, shortName: 'Book' },
+    { name: 'My Appointments', icon: Clock, shortName: 'Appointments' },
+    { name: 'Treatment History', icon: HeartPulse, shortName: 'History' },
+    { name: 'Notifications', icon: Bell, shortName: 'Notifications' },
   ];
 
   const renderContent = () => {
@@ -266,12 +266,12 @@ export default function PatientPortal({ patientUser, userProfile, onLogout, onSw
                 <button
                   key={item.name}
                   onClick={() => setActiveTab(item.name)}
-                  className={`flex flex-col items-center gap-1 py-1 px-3.5 rounded-xl transition-all ${
+                  className={`flex flex-col items-center gap-1 py-1 px-1.5 sm:px-3 rounded-xl transition-all ${
                     isActive ? 'text-[#6D5AE6] dark:text-indigo-300 bg-[#F0ECFF] dark:bg-indigo-600/20 font-bold' : 'text-[#667085] dark:text-slate-400'
                   }`}
                 >
                   <Icon className={`h-4 w-4 ${isActive ? 'text-[#8B5CF6] dark:text-indigo-400' : 'text-[#667085] dark:text-slate-400'}`} />
-                  <span className="text-[10px]">{item.name.split(' ')[0]}</span>
+                  <span className="text-[9px] sm:text-[10px] truncate max-w-[64px]">{item.shortName || item.name}</span>
                 </button>
               );
             })}

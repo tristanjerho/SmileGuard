@@ -207,17 +207,17 @@ export default function LoginForm({ onSuccess, onToggleViewMode, onSwitchToAdmin
     <div className="w-full max-w-md mx-auto space-y-6 animate-fade-in">
       {/* Role Selection Toggle */}
       {onSwitchToAdmin && (
-        <div className="flex items-center justify-center p-1 rounded-xl bg-[#F7F5FF] border border-[#E9E5F5] max-w-xs mx-auto mb-2 shadow-xs">
+        <div className="flex items-center justify-center p-1 rounded-xl bg-slate-800/80 border border-slate-700/60 mb-6">
           <button
             type="button"
-            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold bg-white text-[#6D5AE6] shadow-xs border border-[#E9E5F5]"
+            className="flex-1 py-2 px-3 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm"
           >
             👤 Patient Sign In
           </button>
           <button
             type="button"
             onClick={onSwitchToAdmin}
-            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold text-[#667085] hover:text-[#6D5AE6] transition-colors"
+            className="flex-1 py-2 px-3 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
           >
             🩺 Dentist / Admin
           </button>
@@ -225,33 +225,33 @@ export default function LoginForm({ onSuccess, onToggleViewMode, onSwitchToAdmin
       )}
 
       {/* Header section inside card */}
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+      <div className="text-center space-y-1.5 mb-5">
+        <h2 className="text-2xl sm:text-[1.7rem] font-black text-white tracking-tight">
           {isRegisterMode ? 'Create Patient Account' : 'Patient Portal'}
         </h2>
-        <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
+        <p className="text-xs sm:text-sm font-medium text-purple-200/75 leading-relaxed">
           {isRegisterMode
             ? 'Register to access smart appointments and AI dental diagnostics.'
             : 'Sign in to access your dental records.'}
         </p>
       </div>
 
-      {/* Success Animation Notification */}
+      {/* Success Banner */}
       {isSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs sm:text-sm font-semibold flex items-center gap-3 animate-bounce">
-          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+        <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-700/50 text-emerald-300 text-xs font-semibold flex items-center gap-2.5 animate-fade-in">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
-      {/* Firebase Error Notification */}
+      {/* Error Banner */}
       {firebaseError && (
         <div
           role="alert"
           aria-live="assertive"
-          className="p-4 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs sm:text-sm font-medium flex items-start gap-3 animate-slide-up"
+          className="p-3.5 rounded-xl bg-red-950/60 border border-red-700/50 text-red-300 text-xs font-medium flex items-start gap-2.5 animate-slide-up"
         >
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+          <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
           <span className="flex-1">{firebaseError}</span>
         </div>
       )}
@@ -305,12 +305,12 @@ export default function LoginForm({ onSuccess, onToggleViewMode, onSwitchToAdmin
         {/* Remember Me & Forgot Password Links */}
         {!isRegisterMode && (
           <div className="flex items-center justify-between pt-1 pb-1 text-xs">
-            <label className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-medium cursor-pointer select-none">
+            <label className="flex items-center gap-2 text-slate-400 font-medium cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 transition-colors"
+                className="h-4 w-4 rounded border-slate-600 accent-purple-500 bg-slate-800 transition-colors"
                 disabled={isLoading || isSuccess}
               />
               <span>Remember Me</span>
@@ -319,7 +319,7 @@ export default function LoginForm({ onSuccess, onToggleViewMode, onSwitchToAdmin
             <button
               type="button"
               onClick={() => setIsForgotModalOpen(true)}
-              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 focus:outline-none focus:underline transition-colors"
+              className="text-xs font-bold text-purple-400 hover:text-purple-300 focus:outline-none focus:underline transition-colors"
               disabled={isLoading || isSuccess}
             >
               Forgot Password?
@@ -360,9 +360,9 @@ export default function LoginForm({ onSuccess, onToggleViewMode, onSwitchToAdmin
       {/* Divider */}
       <div className="relative flex items-center justify-center py-2">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+          <div className="w-full border-t border-slate-700" />
         </div>
-        <div className="relative px-3 bg-white dark:bg-slate-900/90 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+        <div className="relative px-3 bg-slate-900/80 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
           OR
         </div>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, AlertCircle, ArrowLeft, Key, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Key, CheckCircle2 } from 'lucide-react';
 import { auth, db } from '../../firebase';
 import {
   signInWithEmailAndPassword,
@@ -8,15 +8,16 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Spinner from '../auth/Spinner';
-import PurpleWaveBackground from '../common/PurpleWaveBackground';
-import Logo from '../auth/Logo';
+import AuthSplitLayout from '../auth/AuthSplitLayout';
 
 /**
- * AdminLoginPage Component
- * Authenticates & provisions the Clinician Administrator account:
- * Email: admin@smileguard.ai (or "admin")
- * Password: smileguard
- * Wrapped in luminous PurpleWaveBackground with official brand assets.
+ * AdminLoginPage — Dentist / Admin Portal authentication page.
+ * Uses the shared AuthSplitLayout for full visual consistency with the Patient Portal.
+ * All Firebase authentication logic is preserved exactly as-is.
+ *
+ * Credentials handled externally — do NOT display real credentials in placeholders.
+ * Email:    admin@smileguard.ai (or "admin" alias)
+ * Password: (managed by clinic administrator)
  */
 export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatientPortal }) {
   const [emailInput, setEmailInput] = useState('');
@@ -25,6 +26,7 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Allow "admin" shorthand — resolves to real admin email internally
   const formatAdminEmail = (raw) => {
     const trimmed = raw.trim().toLowerCase();
     if (trimmed === 'admin') {
@@ -45,10 +47,10 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
       let userCredential;
       if (auth) {
         try {
-          // Attempt Sign In first
+          // Attempt sign-in first
           userCredential = await signInWithEmailAndPassword(auth, targetEmail, password);
         } catch (signInErr) {
-          // If user doesn't exist, automatically create the Admin Account in Firebase Auth
+          // Auto-create admin account on first run if it doesn't exist
           if (
             signInErr.code === 'auth/user-not-found' ||
             signInErr.code === 'auth/invalid-credential'
@@ -62,6 +64,7 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
           }
         }
       } else {
+        // Demo/offline fallback
         await new Promise((res) => setTimeout(res, 1000));
         userCredential = {
           user: { uid: 'admin_demo', email: targetEmail, displayName: 'Dr. Ana Santos' },
@@ -70,7 +73,7 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
 
       const user = userCredential.user;
 
-      // Provision Admin Role in Cloud Firestore
+      // Provision admin role in Cloud Firestore
       if (db && user.uid !== 'admin_demo') {
         const userRef = doc(db, 'users', user.uid);
         await setDoc(
@@ -98,7 +101,7 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
         );
       }
 
-      setSuccessMsg('Administrator Account Provisioned & Verified! Loading Admin Portal...');
+      setSuccessMsg('Administrator Account Verified! Loading Admin Portal...');
       setTimeout(() => {
         if (onAdminAuthenticated) {
           onAdminAuthenticated(user);
@@ -117,136 +120,143 @@ export default function AdminLoginPage({ onAdminAuthenticated, onSwitchToPatient
   };
 
   return (
-    <PurpleWaveBackground>
-      <div className="min-h-screen w-screen flex flex-col justify-between p-6 sm:p-12 relative font-sans">
-        {/* Top Header Navigation */}
-        <div className="z-10 flex items-center justify-between max-w-5xl w-full mx-auto">
-          <button
-            onClick={onSwitchToPatientPortal}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-950/60 border border-purple-400/30 text-xs font-bold text-purple-100 hover:text-white hover:bg-purple-900/80 shadow-md backdrop-blur-md transition-all active:scale-95"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Portal Selection</span>
-          </button>
-
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-950/60 border border-purple-400/30 text-xs font-bold text-purple-200 shadow-md backdrop-blur-md">
-            <ShieldCheck className="h-4 w-4 text-purple-400" />
-            <span>Clinician & Administrator Gateway</span>
-          </div>
-        </div>
-
-        {/* Main Centered Login Box */}
-        <div className="my-auto z-10 w-full max-w-md mx-auto space-y-6 animate-fade-in text-left py-6">
-          {/* Official Brand Logo */}
-          <div className="text-center space-y-2 flex flex-col items-center">
-            <Logo size="lg" variant="badge" subtitle="" className="mx-auto justify-center" />
-            <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md pt-1">
-              SmileGuard <span className="text-purple-300">Admin</span>
-            </h1>
-            <p className="text-xs text-purple-200/90 font-semibold tracking-wide">
-              Clinical Decision Support & Clinic Management Portal
-            </p>
-          </div>
-
-          {/* Centered White Card with High-Contrast Text */}
-          <div className="bg-white border border-purple-200/80 rounded-[24px] p-6 sm:p-8 shadow-[0_12px_40px_rgba(0,0,0,0.3)] space-y-5">
-            {/* Role Switcher */}
-            <div className="flex items-center justify-center p-1 rounded-xl bg-purple-50 border border-purple-200 max-w-xs mx-auto shadow-xs">
-              <button
-                type="button"
-                onClick={onSwitchToPatientPortal}
-                className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold text-slate-600 hover:text-purple-700 transition-colors"
-              >
-                👤 Patient Portal
-              </button>
-              <button
-                type="button"
-                className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-xs border border-purple-600"
-              >
-                🩺 Dentist / Admin
-              </button>
-            </div>
-
-            {successMsg && (
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-bounce">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>{successMsg}</span>
-              </div>
-            )}
-
-            {errorMsg && (
-              <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2.5 animate-slide-up">
-                <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleAdminSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                  Admin Username / Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="admin or admin@smileguard.ai"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white focus:border-purple-600 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="smileguard"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white focus:border-purple-600 transition-all"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60"
-              >
-                {isLoading ? (
-                  <>
-                    <Spinner size="sm" className="text-white" />
-                    <span>Authenticating Admin Account...</span>
-                  </>
-                ) : (
-                  <>
-                    <Key className="h-4 w-4" />
-                    <span>Authorize & Sign In Admin Account</span>
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-100 text-[11px] text-slate-600 text-center space-y-1">
-              <p className="font-bold text-purple-900">Restricted Access Environment</p>
-              <p>Authorized dentists & clinic managers only. All attempts audited.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="z-10 text-center text-xs text-purple-200/90 font-semibold max-w-5xl w-full mx-auto">
-          SmileGuard AI Clinical Workspace v1.2.0 • HIPAA Compliant Environment
-        </div>
+    <AuthSplitLayout
+      onBack={onSwitchToPatientPortal}
+      leftTitle1="Clinical Intelligence."
+      leftTitle2="Smarter Dental Decisions."
+      leftDescription="Advanced clinical decision support for dentists and clinic managers. Manage patient records, AI diagnostic tools, and practice workflows in one secure platform."
+      leftBadges={[
+        '🩺 AI Radiograph Diagnostics',
+        '📋 Patient Record Management',
+        '🔬 Laboratory & Lab Tracking',
+      ]}
+      leftMascotBadge="Clinician & Admin Gateway"
+      headerRightLabel="Clinician & Administrator Gateway"
+      footerLeft="SmileGuard AI Clinical Workspace v1.2.0"
+      footerRight="HIPAA Compliant"
+    >
+      {/* ── Portal Switcher Tab ── */}
+      <div className="flex items-center justify-center p-1 rounded-xl bg-slate-800/80 border border-slate-700/60 mb-6">
+        <button
+          type="button"
+          onClick={onSwitchToPatientPortal}
+          className="flex-1 py-2 px-3 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          👤 Patient Portal
+        </button>
+        <button
+          type="button"
+          className="flex-1 py-2 px-3 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm"
+        >
+          🩺 Dentist / Admin
+        </button>
       </div>
-    </PurpleWaveBackground>
+
+      {/* ── Heading ── */}
+      <div className="text-center space-y-1.5 mb-5">
+        <h2 className="text-2xl sm:text-[1.7rem] font-black text-white tracking-tight">
+          SmileGuard <span className="text-purple-300">Admin</span>
+        </h2>
+        <p className="text-xs sm:text-sm font-medium text-purple-200/75 leading-relaxed">
+          Clinical Decision Support & Clinic Management Portal
+        </p>
+      </div>
+
+      {/* ── Success Message ── */}
+      {successMsg && (
+        <div className="mb-4 p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-700/50 text-emerald-300 text-xs font-semibold flex items-center gap-2.5 animate-fade-in">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
+      {/* ── Error Message ── */}
+      {errorMsg && (
+        <div className="mb-4 p-3.5 rounded-xl bg-red-950/60 border border-red-700/50 text-red-300 text-xs font-medium flex items-center gap-2.5 animate-slide-up">
+          <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* ── Admin Form ── */}
+      <form onSubmit={handleAdminSubmit} className="space-y-4" noValidate>
+        {/* Email / Username field */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="admin-email"
+            className="block text-xs font-semibold text-slate-300 tracking-wide"
+          >
+            Admin Username / Email
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <Mail className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <input
+              id="admin-email"
+              type="text"
+              required
+              autoComplete="username"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              placeholder="admin@example.com"
+              disabled={isLoading || Boolean(successMsg)}
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800/60 border border-slate-600/80 text-xs sm:text-sm font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-slate-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </div>
+        </div>
+
+        {/* Password field */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="admin-password"
+            className="block text-xs font-semibold text-slate-300 tracking-wide"
+          >
+            Password
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <Lock className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <input
+              id="admin-password"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="passwordexample"
+              disabled={isLoading || Boolean(successMsg)}
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800/60 border border-slate-600/80 text-xs sm:text-sm font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-slate-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </div>
+        </div>
+
+        {/* Authorize button */}
+        <button
+          type="submit"
+          disabled={isLoading || Boolean(successMsg)}
+          className="w-full py-3.5 px-4 mt-1 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-700/25 transition-all flex items-center justify-center gap-2.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+        >
+          {isLoading ? (
+            <>
+              <Spinner size="sm" className="text-white" />
+              <span>Authenticating Admin Account...</span>
+            </>
+          ) : (
+            <>
+              <Key className="h-4 w-4 shrink-0" />
+              <span>Authorize &amp; Sign In Admin Account</span>
+            </>
+          )}
+        </button>
+      </form>
+
+      {/* ── Restricted Access Notice ── */}
+      <div className="mt-5 p-3 rounded-xl bg-slate-800/50 border border-slate-700/60 text-[11px] text-slate-400 text-center space-y-0.5">
+        <p className="font-bold text-purple-300">Restricted Access Environment</p>
+        <p>Authorized dentists & clinic managers only. All attempts audited.</p>
+      </div>
+    </AuthSplitLayout>
   );
 }

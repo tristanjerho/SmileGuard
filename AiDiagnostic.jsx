@@ -16,7 +16,8 @@ import {
   FileWarning,
   Cloud,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Clock
 } from 'lucide-react';
 import { db } from './src/firebase';
 import { collection, onSnapshot, query, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -43,6 +44,7 @@ export default function AiDiagnostic() {
   const [cloudinaryError, setCloudinaryError] = useState('');
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isWakingService, setIsWakingService] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [apiError, setApiError] = useState('');
 
@@ -314,165 +316,6 @@ export default function AiDiagnostic() {
     performCloudinaryUpload(file);
   };
 
-  /**
-   * Standalone Client-Side AI Neural Diagnostic Engine
-   * Allows full radiological X-ray analysis, Grad-CAM heatmap generation,
-   * and clinical reporting even when the local backend server is offline or unreachable.
-   */
-  const generateStandaloneDiagnosticResult = (imgUrl, file) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        const width = img.naturalWidth || 512;
-        const height = img.naturalHeight || 512;
-
-        // 1. Analyze radiodensity features on HTML5 Canvas
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const imgData = ctx.getImageData(0, 0, width, height).data;
-        let totalLuma = 0;
-        for (let i = 0; i < imgData.length; i += 4) {
-          totalLuma += (imgData[i] * 0.299 + imgData[i + 1] * 0.587 + imgData[i + 2] * 0.114);
-        }
-        const avgLuma = totalLuma / (imgData.length / 4);
-
-        // 2. Render Grad-CAM Jet Heatmap Canvas
-        const heatCanvas = document.createElement('canvas');
-        heatCanvas.width = width;
-        heatCanvas.height = height;
-        const hCtx = heatCanvas.getContext('2d');
-
-        hCtx.fillStyle = '#000000';
-        hCtx.fillRect(0, 0, width, height);
-
-        const cx = width * 0.48;
-        const cy = height * 0.46;
-        const radius = width * 0.24;
-
-        const grad = hCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-        grad.addColorStop(0.0, 'rgba(255, 0, 0, 0.95)');
-        grad.addColorStop(0.35, 'rgba(255, 140, 0, 0.75)');
-        grad.addColorStop(0.65, 'rgba(255, 230, 0, 0.5)');
-        grad.addColorStop(0.85, 'rgba(0, 220, 130, 0.25)');
-        grad.addColorStop(1.0, 'rgba(0, 0, 255, 0.0)');
-
-        hCtx.fillStyle = grad;
-        hCtx.beginPath();
-        hCtx.arc(cx, cy, radius, 0, Math.PI * 2);
-        hCtx.fill();
-
-        // 3. Render Composite Overlay Canvas (Original + Heatmap)
-        const overCanvas = document.createElement('canvas');
-        overCanvas.width = width;
-        overCanvas.height = height;
-        const oCtx = overCanvas.getContext('2d');
-        oCtx.drawImage(img, 0, 0, width, height);
-        oCtx.globalAlpha = 0.45;
-        oCtx.drawImage(heatCanvas, 0, 0, width, height);
-
-        const heatmapUrl = heatCanvas.toDataURL('image/png');
-        const overlayUrl = overCanvas.toDataURL('image/png');
-
-        // 4. Formulate diagnostic findings & recommendations based on radiodensity
-        let prediction = 'Dental Caries';
-        let confidence = 94.6;
-        let probabilities = {
-          'Dental Caries': 0.946,
-          'Impacted Teeth': 0.034,
-          'Infection': 0.020
-        };
-        let rawVector = [0.946, 0.034, 0.020];
-        let findings = [
-          'Localized radiolucency observed at the enamel-dentine junction',
-          'Moderate loss of mineral radiodensity requiring clinical intervention',
-          'Root canal anatomy and periapical area intact'
-        ];
-        let recommendations = [
-          'Perform tactile dental probe examination',
-          'Consider preventive composite resin restoration',
-          'Follow-up bitewing radiograph in 6 months'
-        ];
-
-        if (avgLuma > 155) {
-          prediction = 'Normal / Intact Dental Structure';
-          confidence = 96.8;
-          probabilities = {
-            'Dental Caries': 0.015,
-            'Impacted Teeth': 0.017,
-            'Infection': 0.010,
-            'Normal / Intact Dental Structure': 0.958
-          };
-          rawVector = [0.015, 0.017, 0.010, 0.958];
-          findings = [
-            'Uniform enamel and dentin radiodensity',
-            'Intact alveolar bone margin with clear lamina dura',
-            'No significant coronal or apical radiolucencies'
-          ];
-          recommendations = [
-            'Routine oral hygiene maintenance',
-            'Annual clinical follow-up'
-          ];
-        } else if (avgLuma < 70) {
-          prediction = 'Infection';
-          confidence = 91.2;
-          probabilities = {
-            'Dental Caries': 0.045,
-            'Impacted Teeth': 0.043,
-            'Infection': 0.912
-          };
-          rawVector = [0.045, 0.043, 0.912];
-          findings = [
-            'Periapical radiolucent halo surrounding root apex',
-            'Slight pdl space widening with cortical plate thinning',
-            'Recommend pulpal vitality assessment'
-          ];
-          recommendations = [
-            'Endodontic consultation & vitality testing',
-            'Consider root canal treatment plan'
-          ];
-        }
-
-        resolve({
-          prediction,
-          confidence,
-          probabilities,
-          rawVector,
-          findings,
-          recommendations,
-          original: imgUrl,
-          heatmap: heatmapUrl,
-          overlay: overlayUrl,
-          modelVersion: 'v1.2.0 (Standalone AI Neural Engine)',
-          isStandalone: true,
-        });
-      };
-
-      img.onerror = () => {
-        resolve({
-          prediction: 'Dental Caries',
-          confidence: 92.0,
-          probabilities: { 'Dental Caries': 0.92, 'Impacted Teeth': 0.05, 'Infection': 0.03 },
-          rawVector: [0.92, 0.05, 0.03],
-          findings: ['Scanned radiograph processed by Standalone Neural Engine'],
-          recommendations: ['Perform clinical review'],
-          original: imgUrl,
-          heatmap: imgUrl,
-          overlay: imgUrl,
-          modelVersion: 'v1.2.0 (Standalone AI Neural Engine)',
-          isStandalone: true,
-        });
-
-      };
-
-      img.src = imgUrl;
-    });
-  };
-
   const handleAnalyzeImage = async () => {
     if (!uploadedFile) {
       setValidationError({
@@ -485,9 +328,14 @@ export default function AiDiagnostic() {
     }
 
     setIsAnalyzing(true);
+    setIsWakingService(false);
     setApiError('');
     setValidationError(null);
     setAnalysisResult(null);
+
+    const wakingTimer = setTimeout(() => {
+      setIsWakingService(true);
+    }, 8000);
 
     let cUrl = cloudinaryUrl;
     if (!cUrl) {
@@ -498,7 +346,7 @@ export default function AiDiagnostic() {
     formData.append('file', uploadedFile);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
 
     try {
       const response = await fetch(API_ENDPOINTS.predict, {
@@ -508,6 +356,7 @@ export default function AiDiagnostic() {
       });
 
       clearTimeout(timeoutId);
+      clearTimeout(wakingTimer);
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
@@ -531,9 +380,8 @@ export default function AiDiagnostic() {
           return;
         }
 
-        // On other errors, use standalone mode
-        const standaloneResult = await generateStandaloneDiagnosticResult(imagePreviewUrl, uploadedFile);
-        setAnalysisResult(standaloneResult);
+        setApiError('AI analysis unavailable — the model service could not be reached. No analysis was performed.');
+        setAnalysisResult(null);
         return;
       }
 
@@ -541,17 +389,23 @@ export default function AiDiagnostic() {
       setAnalysisResult(data);
     } catch (err) {
       clearTimeout(timeoutId);
-      console.warn('FastAPI backend offline or unreachable. Seamlessly activating Standalone AI Neural Engine...');
-      const standaloneResult = await generateStandaloneDiagnosticResult(imagePreviewUrl, uploadedFile);
-      setAnalysisResult(standaloneResult);
-      setApiError('');
+      clearTimeout(wakingTimer);
+      setApiError('AI analysis unavailable — the model service could not be reached. No analysis was performed.');
+      setAnalysisResult(null);
     } finally {
+      clearTimeout(wakingTimer);
+      clearTimeout(timeoutId);
       setIsAnalyzing(false);
+      setIsWakingService(false);
     }
   };
 
   const handleSaveReview = async (e) => {
     e.preventDefault();
+    if (!analysisResult?.prediction) {
+      alert('Dentist review disabled — a successful AI analysis is required before a review can be documented and saved.');
+      return;
+    }
     if (!hasReviewedAiOutput) {
       alert('Please confirm "Reviewed AI output" checkbox before saving.');
       return;
@@ -902,6 +756,12 @@ export default function AiDiagnostic() {
           <p className="text-xs text-[#667085] max-w-md mx-auto leading-relaxed">
             Running EfficientNetB0 feature extraction and generating Grad-CAM visual attention overlays for clinician review.
           </p>
+          {isWakingService && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold max-w-md mx-auto flex items-center justify-center gap-2 animate-fade-in">
+              <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+              <span>Waking the AI service, this can take up to a minute on first use...</span>
+            </div>
+          )}
           <div className="max-w-md mx-auto space-y-2 pt-2">
             <div className="h-2 w-full bg-[#F7F5FF] rounded-full overflow-hidden">
               <div className="h-full bg-[#8B5CF6] rounded-full animate-pulse" style={{ width: '70%' }} />
@@ -1118,6 +978,13 @@ export default function AiDiagnostic() {
               <span>DENTIST CLINICAL REVIEW & FINAL DECISION</span>
             </h3>
 
+            {!analysisResult?.prediction && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>Dentist Review disabled — a successful AI analysis is required before a review can be documented and saved.</span>
+              </div>
+            )}
+
             {reviewSavedSuccess && (
               <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -1128,8 +995,14 @@ export default function AiDiagnostic() {
             <form onSubmit={handleSaveReview} className="space-y-4">
               {/* Checkbox Confirmation */}
               <label
-                onClick={() => setHasReviewedAiOutput((prev) => !prev)}
-                className="flex items-center gap-3 p-4 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] cursor-pointer hover:bg-[#F0ECFF] transition-colors select-none"
+                onClick={() => {
+                  if (analysisResult?.prediction) {
+                    setHasReviewedAiOutput((prev) => !prev);
+                  }
+                }}
+                className={`flex items-center gap-3 p-4 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] select-none ${
+                  analysisResult?.prediction ? 'cursor-pointer hover:bg-[#F0ECFF]' : 'opacity-50 cursor-not-allowed'
+                } transition-colors`}
               >
                 {hasReviewedAiOutput ? (
                   <CheckSquare className="h-5 w-5 text-[#8B5CF6] shrink-0" />
@@ -1149,10 +1022,11 @@ export default function AiDiagnostic() {
                 <textarea
                   required
                   rows={3}
+                  disabled={!analysisResult?.prediction}
                   value={clinicalInterpretation}
                   onChange={(e) => setClinicalInterpretation(e.target.value)}
                   placeholder="Enter detailed radiological and clinical observations..."
-                  className="w-full p-3.5 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] text-xs font-medium text-[#263238] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
+                  className="w-full p-3.5 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] text-xs font-medium text-[#263238] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -1164,18 +1038,19 @@ export default function AiDiagnostic() {
                 <textarea
                   required
                   rows={3}
+                  disabled={!analysisResult?.prediction}
                   value={finalClinicalDecision}
                   onChange={(e) => setFinalClinicalDecision(e.target.value)}
                   placeholder="State final diagnosis, treatment plan recommendations, or follow-up procedures..."
-                  className="w-full p-3.5 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] text-xs font-medium text-[#263238] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
+                  className="w-full p-3.5 rounded-[12px] border border-[#E9E5F5] bg-[#F7F5FF] text-xs font-medium text-[#263238] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
               {/* Save Button */}
               <button
                 type="submit"
-                disabled={isSavingReview}
-                className="px-6 py-3 bg-[#8B5CF6] hover:bg-[#6D5AE6] text-white font-bold text-xs rounded-[11px] shadow-sm transition-all flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+                disabled={!analysisResult?.prediction || isSavingReview}
+                className="px-6 py-3 bg-[#8B5CF6] hover:bg-[#6D5AE6] text-white font-bold text-xs rounded-[11px] shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSavingReview ? (
                   <>
