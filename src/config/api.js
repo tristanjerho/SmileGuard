@@ -9,10 +9,11 @@ const getDynamicApiUrl = () => {
 
   if (typeof window !== 'undefined' && window.location) {
     const hostname = window.location.hostname;
-    // On Vercel or public HTTPS domains, default to same-origin relative path unless VITE_API_URL is provided
+    // On Vercel or public HTTPS domains, use live Render backend URL if VITE_API_URL is not set
     if (hostname.endsWith('.vercel.app') || hostname.endsWith('.now.sh')) {
-      return '';
+      return 'https://smileguard-backend.onrender.com';
     }
+
     if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
       return `http://${hostname}:8000`;
     }
